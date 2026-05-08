@@ -42,6 +42,10 @@ poetry.lock
 .env
 .env.local
 
+# GEHD — 项目参考资料（仅本地保留，不公开到 GitHub）
+GEHD_v36_工业化评审报告.md
+专家建议_从Python脚本到工业级幻觉核查软件.md
+
 # GEHD runtime
 *.log
 cache/
