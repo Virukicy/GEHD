@@ -1,0 +1,101 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gehd"
+version = "0.1.0"
+description = "GEHD — 基于多源交叉校验的轻量级文档幻觉核查工具"
+readme = "README.md"
+license = {text = "待定"}
+authors = [
+    {name = "Virukicy", email = "virukisulancelot@gmail.com"},
+]
+requires-python = ">=3.10"
+keywords = ["hallucination", "fact-checking", "document", "ner", "nlp"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Text Processing",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# ---- 核心依赖（运行必须） ----
+dependencies = [
+    "python-docx>=1.0.0",
+]
+
+# ---- 可选依赖 ----
+[project.optional-dependencies]
+# GUI 界面（Iteration 3 使用）
+gui = ["PySide6>=6.6"]
+# 联网核查（Iteration 3 使用）
+web = ["aiohttp>=3.9", "httpx>=0.27"]
+# LLM API 调用（Iteration 3 使用）
+llm = ["openai>=1.30"]
+
+# ---- 开发依赖（只有你改代码时才需要） ----
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "mypy>=1.8",
+    "ruff>=0.3",
+]
+
+# ---- 入口点：让你可以敲 gh 或 python -m hallucination_checker 直接运行 ----
+[project.scripts]
+gehd = "hallucination_checker.cli.main:main"
+
+[project.urls]
+Homepage = "https://github.com/Virukicy/GEHD"
+Issues = "https://github.com/Virukicy/GEHD/issues"
+
+# ============================================================
+# 工具配置
+# ============================================================
+
+# ---- mypy: 类型检查（Iteration 2 启用） ----
+[tool.mypy]
+python_version = "3.11"
+strict = false
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Iteration 2 改为 true
+check_untyped_defs = true
+exclude = ["tests/", "build/", "dist/"]
+
+# ---- ruff: 代码格式化 + lint（Iteration 2 启用） ----
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "W",   # pycodestyle warnings
+    "I",   # isort (import 排序)
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+]
+ignore = ["E501"]  # 行长度由 formatter 处理
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+
+[tool.ruff.lint.isort]
+known-first-party = ["hallucination_checker"]
+
+# ---- pytest: 测试配置 ----
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_functions = ["test_*"]
+addopts = ["-v", "--tb=short", "--strict-markers"]
