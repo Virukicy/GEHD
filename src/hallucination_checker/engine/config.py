@@ -1,11 +1,19 @@
 """
 GEHD 全局配置 —— 所有常量、阈值、白/黑名单、正则模式的集中管理。
 
-这个模块是"设置中心"：引擎的每一层都从这里读取参数，
-修改配置只需要改这一个文件，不需要到处翻代码。
+这个模块是"设置中心"：引擎的每一层都从这里读取参数。
 
-P0-5 将把 WHITELIST/BLACKLIST/ENTITY_PATTERNS 等外部化到 config/*.json。
+配置加载优先级：
+  1. config/*.json（外部化配置）— 优先使用
+  2. 模块内置默认值 — JSON 文件不存在或格式错误时回退
+
+P0-5 已完成外部化。用户直接编辑 config/ 下的 JSON 文件即可修改配置，
+无需改动 Python 代码。
 """
+
+import json
+import os
+from pathlib import Path
 
 # ============================================================
 # 版本信息
@@ -236,3 +244,121 @@ ADJECTIVE_PREFIXES: set[str] = {
     "新兴", "热门", "主流", "重要", "核心", "关键", "主要",
     "多家", "众多", "部分", "相关", "其他", "上述", "某些",
 }
+
+# ============================================================
+# JSON 外部化配置加载器
+# ============================================================
+# 如果 config/ 目录下有对应的 JSON 文件，则使用外部化配置覆盖内置默认值。
+# 这样用户编辑 JSON 即可修改配置，无需碰 Python 代码。
+
+
+def _find_config_dir() -> Path | None:
+    """定位 config/ 目录。
+
+    搜索顺序：
+      1. 当前工作目录下的 config/
+      2. 本文件向上 4 级（项目根目录）下的 config/
+    """
+    candidates = [
+        Path.cwd() / 'config',
+        Path(__file__).resolve().parent.parent.parent.parent / 'config',
+    ]
+    for p in candidates:
+        if p.is_dir():
+            return p
+    return None
+
+
+def _load_json_list(filepath: Path, key: str) -> list[str] | None:
+    """从 JSON 文件中加载字符串列表。"""
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        items = data.get(key, [])
+        if isinstance(items, list) and len(items) > 0:
+            return items
+    except (json.JSONDecodeError, FileNotFoundError, KeyError):
+        pass
+    return None
+
+
+def _load_json_patterns(filepath: Path, key: str) -> list[tuple[str, str, int]] | None:
+    """从 JSON 文件中加载 (pattern, category, score) 元组列表。"""
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        items = data.get(key, [])
+        if isinstance(items, list) and len(items) > 0:
+            return [
+                (item['pattern'], item['category'], item['base_score'])
+                for item in items
+                if all(k in item for k in ('pattern', 'category', 'base_score'))
+            ]
+    except (json.JSONDecodeError, FileNotFoundError, KeyError):
+        pass
+    return None
+
+
+def _load_json_thresholds(filepath: Path) -> dict | None:
+    """从 JSON 文件中加载评分阈值。"""
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        scores = data.get('scores', {})
+        text = data.get('text_processing', {})
+        l4 = data.get('l4', {})
+        if scores or text or l4:
+            return {**scores, **text, **l4}
+    except (json.JSONDecodeError, FileNotFoundError):
+        pass
+    return None
+
+
+def _apply_external_config() -> None:
+    """加载外部化配置并覆盖模块级变量。"""
+    cfg_dir = _find_config_dir()
+    if cfg_dir is None:
+        return
+
+    # --- 白名单 ---
+    whitelist_items = _load_json_list(cfg_dir / 'whitelist.json', 'whitelist')
+    if whitelist_items:
+        globals()['WHITELIST'] = set(whitelist_items)
+
+    # --- 黑名单 ---
+    blacklist_items = _load_json_list(cfg_dir / 'blacklist.json', 'blacklist')
+    if blacklist_items:
+        globals()['BLACKLIST'] = list(blacklist_items)
+
+    # --- 实体提取模式 ---
+    entity_patterns = _load_json_patterns(cfg_dir / 'entity_patterns.json', 'patterns')
+    if entity_patterns:
+        globals()['ENTITY_PATTERNS'] = entity_patterns
+
+    # --- L2.5 模式 ---
+    l25_patterns = _load_json_patterns(cfg_dir / 'l25_patterns.json', 'patterns')
+    if l25_patterns:
+        globals()['L25_PATTERNS'] = l25_patterns
+
+    # --- 排除词 ---
+    exclude_items = _load_json_list(cfg_dir / 'exclude_words.json', 'exclude_words')
+    if exclude_items:
+        globals()['EXCLUDE_WORDS'] = set(exclude_items)
+
+    # --- 形容词前缀 ---
+    adj_items = _load_json_list(cfg_dir / 'adjective_prefixes.json', 'adjective_prefixes')
+    if adj_items:
+        globals()['ADJECTIVE_PREFIXES'] = set(adj_items)
+
+    # --- 评分阈值 ---
+    thresholds = _load_json_thresholds(cfg_dir / 'thresholds.json')
+    if thresholds:
+        for key, value in thresholds.items():
+            key_upper = key.upper()
+            if key_upper in globals():
+                globals()[key_upper] = value
+
+
+# 模块加载时自动应用外部化配置
+_apply_external_config()
+

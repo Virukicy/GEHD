@@ -1,0 +1,43 @@
+{
+  "_description": "GEHD 引擎参数 - 评分阈值和文本处理参数",
+  "_usage": "调整这些值可以改变引擎的敏感度。数值越大越严格（报更多），越小越宽松（报更少）",
+
+  "scores": {
+    "high_threshold": 65,
+    "_high_note": "≥此分的候选标记为'高危'，直接报告为 issue",
+    "medium_threshold": 45,
+    "_medium_note": "≥此分且<高危线的候选标记为'中危'，报告为 warning",
+    "minimum": 10,
+    "_minimum_note": "所有候选的最低分数底线",
+    "adjective_penalty": 30,
+    "_adjective_penalty_note": "候选词以形容词前缀开头时的减分幅度",
+    "l35_penalty": 30,
+    "_l35_penalty_note": "L3.5 形容词前缀过滤的减分幅度",
+    "single_char_platform": 15,
+    "_single_char_platform_note": "单字+电商后缀（如'X购'）的加分",
+    "high_freq_bonus": 10,
+    "_high_freq_bonus_note": "出现≥3次的候选词加分",
+    "med_freq_bonus": 3,
+    "_med_freq_bonus_note": "出现≥2次的候选词加分",
+    "plausible_char_penalty": -10,
+    "_plausible_char_penalty_note": "含'淘京东多美苏阿腾百'等可信字符时的降分",
+    "ecommerce_extra": 20,
+    "_ecommerce_extra_note": "电商平台类候选的额外加分"
+  },
+
+  "text_processing": {
+    "max_consecutive_blank_paragraphs": 3,
+    "_blank_note": "连续空段落超过此数触发警告",
+    "long_text_threshold_chars": 300,
+    "_long_text_note": "表格单元格超过此字符数触发截断预警",
+    "context_window_chars": 10,
+    "_context_window_note": "候选词前后抓取的上下文字符数",
+    "min_candidate_length": 2,
+    "_min_candidate_note": "候选实体词的最短长度"
+  },
+
+  "l4": {
+    "deep_search_threshold": 55,
+    "_deep_search_note": "≥此分的候选使用深度搜索（多引擎交叉验证），<此分使用快速搜索（单引擎判断）"
+  }
+}
