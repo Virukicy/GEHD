@@ -74,7 +74,7 @@ python -m hallucination_checker document.docx --verify
          → L3 启发式评分 → L3.6 一致性 → L4 验证队列 → 📊 报告
 ```
 
-详细架构请阅读 [ARCHITECTURE.md](./ARCHITECTURE.md)。
+详细架构请阅读 [docs/architecture.md](./docs/architecture.md)。
 
 ---
 
@@ -92,8 +92,8 @@ python -m hallucination_checker document.docx --verify
 
 | 文档 | 内容 |
 |------|------|
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | 架构全景：模块结构、数据流、配置系统、测试体系 |
-| [DEVELOPMENT.md](./DEVELOPMENT.md) | 开发指南：环境搭建、运行测试、代码规范、修改场景 |
+| [docs/architecture.md](./docs/architecture.md) | 架构全景：模块结构、数据流、配置系统、测试体系 |
+| [docs/development.md](./docs/development.md) | 开发指南：环境搭建、运行测试、代码规范、修改场景 |
 | [CHANGELOG.md](./CHANGELOG.md) | 版本变更记录 |
 
 ---

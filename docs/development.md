@@ -2,7 +2,7 @@
 
 > **版本**：v0.1.2  
 > **最后更新**：2026-05-08  
-> **前置阅读**：先读 [ARCHITECTURE.md](./ARCHITECTURE.md) 了解项目结构
+> **前置阅读**：先读 [architecture.md](./architecture.md) 了解项目结构
 
 ---
 
