@@ -43,7 +43,7 @@ L4_CACHE_SUFFIX = '_l4_cache.json'
 # ============================================================
 
 
-@dataclass
+@dataclass(frozen=True)
 class GEHDConfig:
     """GEHD 引擎的完整配置。
 

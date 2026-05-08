@@ -94,9 +94,9 @@ def check_docx(
 def main() -> None:
     """CLI 主入口。"""
     if len(sys.argv) < 2:
-        logger.info('用法:')
-        logger.info('  python -m hallucination_checker <docx文件路径>')
-        logger.info('  python -m hallucination_checker <docx文件路径> --verify  # 输出L4核查队列')
+        print('用法:')
+        print('  python -m hallucination_checker <docx文件路径>')
+        print('  python -m hallucination_checker <docx文件路径> --verify  # 输出L4核查队列')
         sys.exit(1)
 
     do_verify = '--verify' in sys.argv
