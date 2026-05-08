@@ -222,34 +222,34 @@ class GEHDConfig:
         kwargs: dict = {}
 
         # --- 白名单 ---
-        items = _load_list(config_dir / 'whitelist.json', 'whitelist')
-        if items is not None:
-            kwargs['whitelist'] = frozenset(items)
+        wl_items = _load_list(config_dir / 'whitelist.json', 'whitelist')
+        if wl_items is not None:
+            kwargs['whitelist'] = frozenset(wl_items)
 
         # --- 黑名单 ---
-        items = _load_list(config_dir / 'blacklist.json', 'blacklist')
-        if items is not None:
-            kwargs['blacklist'] = tuple(items)
+        bl_items = _load_list(config_dir / 'blacklist.json', 'blacklist')
+        if bl_items is not None:
+            kwargs['blacklist'] = tuple(bl_items)
 
         # --- 实体提取模式 ---
-        items = _load_patterns(config_dir / 'entity_patterns.json', 'patterns')
-        if items is not None:
-            kwargs['entity_patterns'] = tuple(items)
+        ep_items = _load_patterns(config_dir / 'entity_patterns.json', 'patterns')
+        if ep_items is not None:
+            kwargs['entity_patterns'] = tuple(ep_items)
 
         # --- L2.5 模式 ---
-        items = _load_patterns(config_dir / 'l25_patterns.json', 'patterns')
-        if items is not None:
-            kwargs['l25_patterns'] = tuple(items)
+        l25_items = _load_patterns(config_dir / 'l25_patterns.json', 'patterns')
+        if l25_items is not None:
+            kwargs['l25_patterns'] = tuple(l25_items)
 
         # --- 排除词 ---
-        items = _load_list(config_dir / 'exclude_words.json', 'exclude_words')
-        if items is not None:
-            kwargs['exclude_words'] = frozenset(items)
+        ex_items = _load_list(config_dir / 'exclude_words.json', 'exclude_words')
+        if ex_items is not None:
+            kwargs['exclude_words'] = frozenset(ex_items)
 
         # --- 形容词前缀 ---
-        items = _load_list(config_dir / 'adjective_prefixes.json', 'adjective_prefixes')
-        if items is not None:
-            kwargs['adjective_prefixes'] = frozenset(items)
+        adj_items = _load_list(config_dir / 'adjective_prefixes.json', 'adjective_prefixes')
+        if adj_items is not None:
+            kwargs['adjective_prefixes'] = frozenset(adj_items)
 
         # --- 评分阈值 ---
         thresholds = _load_thresholds(config_dir / 'thresholds.json')

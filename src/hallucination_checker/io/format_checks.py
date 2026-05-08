@@ -2,12 +2,18 @@
 基础格式检查 (Check 1-5) —— 检测文档排版问题，不涉及内容幻觉。
 """
 
+from __future__ import annotations
+
 import re
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from docx.document import Document
 
 from ..engine.config import GEHDConfig
 
 
-def check_markdown(doc) -> list[str]:
+def check_markdown(doc: Document) -> list[str]:
     """Check 1: 检测 Markdown 语法符号残留。"""
     patterns = [r'\*\*', r'~~', r'`{1,3}', r'^#{1,6}\s']
     issues: list[str] = []
@@ -30,7 +36,7 @@ def check_markdown(doc) -> list[str]:
     return issues
 
 
-def check_empty_table_rows(doc) -> list[str]:
+def check_empty_table_rows(doc: Document) -> list[str]:
     """Check 2: 检测空表格行。"""
     issues: list[str] = []
 
@@ -47,7 +53,7 @@ def check_empty_table_rows(doc) -> list[str]:
     return issues
 
 
-def check_blank_paragraphs(doc, config: GEHDConfig) -> list[str]:
+def check_blank_paragraphs(doc: Document, config: GEHDConfig) -> list[str]:
     """Check 3: 检测大面积连续空白段落。"""
     issues: list[str] = []
     consecutive = 0
@@ -76,7 +82,7 @@ def check_blank_paragraphs(doc, config: GEHDConfig) -> list[str]:
     return issues
 
 
-def check_emoji(doc) -> list[str]:
+def check_emoji(doc: Document) -> list[str]:
     """Check 4: 检测 Emoji 和方块字符。"""
     emoji_ranges = [
         (0x1F300, 0x1F9FF), (0x2600, 0x26FF), (0x2700, 0x27BF),
@@ -95,7 +101,7 @@ def check_emoji(doc) -> list[str]:
     return issues
 
 
-def check_long_text(doc, config: GEHDConfig) -> list[str]:
+def check_long_text(doc: Document, config: GEHDConfig) -> list[str]:
     """Check 5: 检测超长文本（表格单元格截断预警）。"""
     warnings: list[str] = []
 

@@ -4,12 +4,18 @@
 未来可扩展支持 .txt / .md / .pdf / .html 等格式。
 """
 
+from __future__ import annotations
+
 import os
+from typing import TYPE_CHECKING
 
-from docx import Document
+from docx import Document as _DocumentFactory
+
+if TYPE_CHECKING:
+    from docx.document import Document
 
 
-def load_docx(filepath: str):
+def load_docx(filepath: str) -> Document:
     """加载 .docx 文件，含统一异常处理。
 
     Args:
@@ -26,7 +32,7 @@ def load_docx(filepath: str):
         raise FileNotFoundError(f'文件不存在: {filepath}')
 
     try:
-        doc = Document(filepath)
+        doc = _DocumentFactory(filepath)
     except Exception as e:
         raise ValueError(f'无法读取 docx 文件: {e}') from e
 

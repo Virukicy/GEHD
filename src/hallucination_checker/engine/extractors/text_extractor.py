@@ -5,8 +5,14 @@
   位置标识格式: "P1"（段落1）、"T2[3,1]"（表格2第3行第1列）
 """
 
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
-def extract_all_text(doc) -> list[tuple[str, str]]:
+if TYPE_CHECKING:
+    from docx.document import Document
+
+
+def extract_all_text(doc: Document) -> list[tuple[str, str]]:
     """从 docx 中提取所有有意义的文本片段及其位置信息。
 
     Args:

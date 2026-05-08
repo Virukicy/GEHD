@@ -2,6 +2,12 @@
 GEHD 主编排器 —— 组合 L1→L4 全链路核查流程。
 """
 
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from docx.document import Document
+
 from .layers.l2_blacklist import scan_blacklist
 from .layers.l25_nonentity import detect_non_entity, deduplicate_l25
 from .layers.l3_heuristic import extract_and_score, deduplicate_entities
@@ -12,7 +18,7 @@ from .config import GEHDConfig
 
 
 def gehd_check(
-    doc, config: GEHDConfig, output_verify_queue: bool = False
+    doc: Document, config: GEHDConfig, output_verify_queue: bool = False
 ) -> tuple[list[str], list[str], dict, list[dict]]:
     """GEHD 主核查入口。
 

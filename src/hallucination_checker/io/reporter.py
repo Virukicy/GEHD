@@ -2,6 +2,12 @@
 报告生成器 —— 格式化输出核查结果到终端。
 """
 
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from docx.document import Document
+
 from ..engine.config import (
     GEHD_VERSION,
     GEHD_VERSION_DATE,
@@ -10,7 +16,7 @@ from ..engine.config import (
 )
 
 
-def print_report_header(filepath: str, doc) -> None:
+def print_report_header(filepath: str, doc: Document) -> None:
     """打印报告头部信息。"""
     print('=' * 65)
     print(f'  DOCX 自检报告 v{GEHD_VERSION} (GEHD + L4联网核查)')
