@@ -1,22 +1,17 @@
 """
 报告生成器 —— 格式化输出核查结果到终端。
-
-负责将 issues / warnings / stats 以人类可读的方式打印出来，
-包括 L4 验证队列的可视化展示。
 """
 
 from ..engine.config import (
     GEHD_VERSION,
     GEHD_VERSION_DATE,
     GEHD_VERSION_HASH,
-    SCORE_HIGH_THRESHOLD,
-    SCORE_MEDIUM_THRESHOLD,
-    DEEP_SEARCH_THRESHOLD,
+    GEHDConfig,
 )
 
 
 def print_report_header(filepath: str, doc) -> None:
-    """打印报告头部信息：版本、文件信息、统计。"""
+    """打印报告头部信息。"""
     print('=' * 65)
     print(f'  DOCX 自检报告 v{GEHD_VERSION} (GEHD + L4联网核查)')
     print(f'  版本: {GEHD_VERSION} | 日期: {GEHD_VERSION_DATE} | 标识: {GEHD_VERSION_HASH}')
@@ -52,24 +47,25 @@ def print_gehd_stats(stats: dict) -> None:
         print(f'  [L2.5] 数据/引述候选: {stats["l25_candidates"]}')
 
 
-def print_l4_summary(l4_queue: list[dict], queue_file: str, cached_count: int) -> None:
+def print_l4_summary(
+    l4_queue: list[dict], queue_file: str, cached_count: int, config: GEHDConfig
+) -> None:
     """打印 L4 验证队列摘要。"""
+    dst = config.deep_search_threshold
     print(f'\n  === L4 联网核查队列 ({len(l4_queue)} 个待验证) ===')
 
-    # 分层策略
-    deep_count = sum(1 for q in l4_queue if q['score'] >= DEEP_SEARCH_THRESHOLD)
+    deep_count = sum(1 for q in l4_queue if q['score'] >= dst)
     quick_count = len(l4_queue) - deep_count
-    print(f'  [L4分层] 深度搜索({deep_count}个,≥{DEEP_SEARCH_THRESHOLD}分) + 快速搜索({quick_count}个,<{DEEP_SEARCH_THRESHOLD}分)')
+    print(f'  [L4分层] 深度搜索({deep_count}个,≥{dst}分) + 快速搜索({quick_count}个,<{dst}分)')
     print(f'  [L4] 验证队列已导出: {queue_file}')
 
     if cached_count > 0:
         print(f'  [L4缓存] 已加载{cached_count}条历史验证结果')
 
-    # 简要列表
     for idx, item in enumerate(l4_queue, 1):
-        mark = ('***' if item['score'] >= SCORE_HIGH_THRESHOLD
-                else (' *' if item['score'] >= SCORE_MEDIUM_THRESHOLD else ''))
-        tier = '[深]' if item['score'] >= DEEP_SEARCH_THRESHOLD else '[快]'
+        mark = ('***' if item['score'] >= config.score_high_threshold
+                else (' *' if item['score'] >= config.score_medium_threshold else ''))
+        tier = '[深]' if item['score'] >= dst else '[快]'
         print(
             f'    {idx:2d}. [{item["score"]:2d}分]{tier} '
             f'{item["word"]:<20s} ({item["category"]}){mark}'

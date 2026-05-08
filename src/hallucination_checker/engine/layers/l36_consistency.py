@@ -8,8 +8,6 @@ L3.6 内部一致性检查层 —— 检测文档内部的逻辑矛盾。
 
 import re
 
-from ..config import ENTITY_PATTERNS
-
 
 def check_entity_frequency(candidates: list[dict]) -> list[dict]:
     """3.6a: 统计同一实体的出现频率。

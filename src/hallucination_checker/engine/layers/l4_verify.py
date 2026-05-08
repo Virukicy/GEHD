@@ -1,10 +1,5 @@
 """
 L4 联网核查队列构建层 —— 生成待验证候选的 JSON 协议。
-
-这一层不做联网验证，只负责：
-  1. 汇总 L2.5 和 L3 的所有候选
-  2. 按 tiered_strategy 分层（深度搜索 vs 快速搜索）
-  3. 输出标准化的 JSON 队列文件和缓存机制
 """
 
 import json
@@ -13,9 +8,6 @@ from datetime import datetime
 
 from ..config import (
     GEHD_VERSION,
-    SCORE_HIGH_THRESHOLD,
-    SCORE_MEDIUM_THRESHOLD,
-    DEEP_SEARCH_THRESHOLD,
     L4_STATUS_PENDING,
     L4_VERDICT_REAL,
     L4_VERDICT_FAKE,
@@ -23,27 +15,16 @@ from ..config import (
     L4_VERDICT_UNABLE,
     L4_QUEUE_SUFFIX,
     L4_CACHE_SUFFIX,
+    GEHDConfig,
 )
 
 
 def build_verify_queue(
-    l25_ranked: list[dict],
-    l3_ranked: list[dict],
+    l25_ranked: list[dict], l3_ranked: list[dict]
 ) -> list[dict]:
-    """构建 L4 待验证队列。
-
-    汇总 L2.5 和 L3 的所有候选，统一格式，标记为 pending_verification。
-
-    Args:
-        l25_ranked: L2.5 去重后的候选列表
-        l3_ranked: L3 去重后的候选列表
-
-    Returns:
-        统一格式的待验证队列
-    """
+    """构建 L4 待验证队列。"""
     queue: list[dict] = []
 
-    # L2.5 候选
     for ent in l25_ranked:
         queue.append({
             'word': ent['word'],
@@ -56,7 +37,6 @@ def build_verify_queue(
             'search_result': None,
         })
 
-    # L3 候选
     for ent in l3_ranked:
         queue.append({
             'word': ent['word'],
@@ -72,16 +52,9 @@ def build_verify_queue(
     return queue
 
 
-def export_queue(filepath: str, l4_queue: list[dict]) -> str:
-    """导出 L4 验证队列为 JSON 文件。
-
-    Args:
-        filepath: 原始 docx 文件路径
-        l4_queue: 待验证队列
-
-    Returns:
-        导出的 JSON 文件路径
-    """
+def export_queue(filepath: str, l4_queue: list[dict], config: GEHDConfig) -> str:
+    """导出 L4 验证队列为 JSON 文件。"""
+    dst = config.deep_search_threshold
     l4_protocol = {
         "protocol_version": "1.0",
         "gehd_version": GEHD_VERSION,
@@ -90,13 +63,13 @@ def export_queue(filepath: str, l4_queue: list[dict]) -> str:
         "total_pending": len(l4_queue),
         "tiered_strategy": {
             "deep_search": {
-                "condition": f"score >= {DEEP_SEARCH_THRESHOLD}",
-                "count": sum(1 for q in l4_queue if q['score'] >= DEEP_SEARCH_THRESHOLD),
+                "condition": f"score >= {dst}",
+                "count": sum(1 for q in l4_queue if q['score'] >= dst),
                 "method": "多引擎交叉验证 + 来源追溯",
             },
             "quick_search": {
-                "condition": f"score < {DEEP_SEARCH_THRESHOLD}",
-                "count": sum(1 for q in l4_queue if q['score'] < DEEP_SEARCH_THRESHOLD),
+                "condition": f"score < {dst}",
+                "count": sum(1 for q in l4_queue if q['score'] < dst),
                 "method": "单引擎快速判断 + 首页验证",
             },
         },
@@ -117,14 +90,7 @@ def export_queue(filepath: str, l4_queue: list[dict]) -> str:
 
 
 def load_cache(filepath: str) -> tuple[int, list[dict]]:
-    """加载已有的 L4 缓存（历史验证结果）。
-
-    Args:
-        filepath: 原始 docx 文件路径
-
-    Returns:
-        (cached_count, verified_entities)
-    """
+    """加载已有的 L4 缓存。"""
     cache_file = filepath.replace('.docx', L4_CACHE_SUFFIX)
     if not os.path.exists(cache_file):
         return 0, []

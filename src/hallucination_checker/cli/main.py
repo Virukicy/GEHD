@@ -1,12 +1,5 @@
 """
 CLI 主入口 —— 命令行参数解析与流程编排。
-
-用法:
-  python -m hallucination_checker <docx文件路径>
-  python -m hallucination_checker <docx文件路径> --verify   # 输出L4核查队列
-
-这一层是"薄层"，只负责解析参数、调用引擎、打印结果，
-不包含任何业务逻辑。
 """
 
 import sys
@@ -28,18 +21,23 @@ from ..io.reporter import (
 )
 from ..engine.checker import gehd_check
 from ..engine.layers.l4_verify import export_queue, load_cache
+from ..engine.config import load_config, GEHDConfig
 
 
-def check_docx(filepath: str, do_verify: bool = False) -> tuple[bool, list[dict] | None]:
+def check_docx(filepath: str, do_verify: bool = False, config: GEHDConfig | None = None) -> tuple[bool, list[dict] | None]:
     """对单个 docx 文件执行全部检查。
 
     Args:
         filepath: docx 文件路径
         do_verify: 是否输出 L4 核查队列
+        config: GEHDConfig 配置（None 则自动加载）
 
     Returns:
         (全部通过?, L4队列|None)
     """
+    if config is None:
+        config = load_config()
+
     # 加载文档
     try:
         doc = load_docx(filepath)
@@ -53,13 +51,13 @@ def check_docx(filepath: str, do_verify: bool = False) -> tuple[bool, list[dict]
     # Check 1-5: 基础格式检查
     all_issues.extend(check_markdown(doc))
     all_issues.extend(check_empty_table_rows(doc))
-    all_issues.extend(check_blank_paragraphs(doc))
+    all_issues.extend(check_blank_paragraphs(doc, config))
     all_issues.extend(check_emoji(doc))
-    all_warnings.extend(check_long_text(doc))
+    all_warnings.extend(check_long_text(doc, config))
 
     # GEHD 幻觉核查
     gehd_issues, gehd_warnings, gehd_stats, l4_queue = gehd_check(
-        doc, output_verify_queue=do_verify
+        doc, config, output_verify_queue=do_verify
     )
     all_issues.extend(gehd_issues)
     all_warnings.extend(gehd_warnings)
@@ -70,9 +68,9 @@ def check_docx(filepath: str, do_verify: bool = False) -> tuple[bool, list[dict]
     print_gehd_stats(gehd_stats)
 
     if do_verify:
-        queue_file = export_queue(filepath, l4_queue)
+        queue_file = export_queue(filepath, l4_queue, config)
         cached_count, _ = load_cache(filepath)
-        print_l4_summary(l4_queue, queue_file, cached_count)
+        print_l4_summary(l4_queue, queue_file, cached_count, config)
 
     print_report_footer()
 
@@ -90,7 +88,8 @@ def main() -> None:
     do_verify = '--verify' in sys.argv
     target = [a for a in sys.argv[1:] if not a.startswith('--')][0]
 
-    result = check_docx(target, do_verify=do_verify)
+    config = load_config()
+    result = check_docx(target, do_verify=do_verify, config=config)
     ok = result[0] if isinstance(result, tuple) else result
     sys.exit(0 if ok else 1)
 
