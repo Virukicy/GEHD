@@ -191,8 +191,8 @@ class TestL4ProtocolStructure:
         assert '_verdict_schema' in protocol, "[L4协议] 缺少_verdict_schema"
         
         # 检查版本号
-        assert protocol['gehd_version'] == '3.6', \
-            f"[L4协议] 版本号应为3.6，实际为{protocol['gehd_version']}"
+        assert protocol['gehd_version'] == '0.1.1', \
+            f"[L4协议] 版本号应为0.1.1，实际为{protocol['gehd_version']}"
         
         # 检查分级策略完整性
         ts = protocol['tiered_strategy']
@@ -216,14 +216,14 @@ class TestEdgeCases:
     
     def test_nonexistent_file_returns_gracefully(self):
         """不存在的文件路径应优雅返回错误，不崩溃"""
-        from docx_self_check import check_docx
+        from hallucination_checker.cli.main import check_docx
         ok, result = check_docx("/tmp/nonexistent_file_99999.docx")
         assert ok is False, "不存在的文件应返回False"
     
     def test_version_string_in_output(self, check_result):
         """输出报告应包含当前版本号"""
-        assert "v3.6" in check_result.output, \
-            "FAIL: 输出报告中未显示版本号v3.6 — 版本常量可能未更新"
+        assert "v0.1.1" in check_result.output, \
+            "FAIL: 输出报告中未显示版本号v0.1.1 — 版本常量可能未更新"
     
     def test_disclaimer_present(self, check_result):
         """输出报告底部应包含免责声明"""

@@ -12,15 +12,14 @@ P0-5 已完成外部化。用户直接编辑 config/ 下的 JSON 文件即可修
 """
 
 import json
-import os
 from pathlib import Path
 
 # ============================================================
 # 版本信息
 # ============================================================
-GEHD_VERSION = "3.6"
-GEHD_VERSION_DATE = "2026-04-23"
-GEHD_VERSION_HASH = "v36-quotetighten-importfix-l4unify"
+GEHD_VERSION = "0.1.1"
+GEHD_VERSION_DATE = "2026-05-08"
+GEHD_VERSION_HASH = "v011-patch-s1234"
 
 # ============================================================
 # 分数阈值
@@ -315,48 +314,149 @@ def _load_json_thresholds(filepath: Path) -> dict | None:
 
 
 def _apply_external_config() -> None:
-    """加载外部化配置并覆盖模块级变量。"""
+    """加载外部化配置并覆盖模块级变量。
+
+    每种配置独立加载，失败时静默跳过（使用内置默认值）。
+    使用显式变量赋值而非 globals() 魔法，确保 mypy 可追踪。
+    """
     cfg_dir = _find_config_dir()
     if cfg_dir is None:
         return
 
     # --- 白名单 ---
     whitelist_items = _load_json_list(cfg_dir / 'whitelist.json', 'whitelist')
-    if whitelist_items:
-        globals()['WHITELIST'] = set(whitelist_items)
+    if whitelist_items is not None:
+        # 显式赋值：mypy 可以验证类型一致性
+        _apply_whitelist(set(whitelist_items))
 
     # --- 黑名单 ---
     blacklist_items = _load_json_list(cfg_dir / 'blacklist.json', 'blacklist')
-    if blacklist_items:
-        globals()['BLACKLIST'] = list(blacklist_items)
+    if blacklist_items is not None:
+        _apply_blacklist(list(blacklist_items))
 
     # --- 实体提取模式 ---
     entity_patterns = _load_json_patterns(cfg_dir / 'entity_patterns.json', 'patterns')
-    if entity_patterns:
-        globals()['ENTITY_PATTERNS'] = entity_patterns
+    if entity_patterns is not None:
+        _apply_entity_patterns(entity_patterns)
 
     # --- L2.5 模式 ---
     l25_patterns = _load_json_patterns(cfg_dir / 'l25_patterns.json', 'patterns')
-    if l25_patterns:
-        globals()['L25_PATTERNS'] = l25_patterns
+    if l25_patterns is not None:
+        _apply_l25_patterns(l25_patterns)
 
     # --- 排除词 ---
     exclude_items = _load_json_list(cfg_dir / 'exclude_words.json', 'exclude_words')
-    if exclude_items:
-        globals()['EXCLUDE_WORDS'] = set(exclude_items)
+    if exclude_items is not None:
+        _apply_exclude_words(set(exclude_items))
 
     # --- 形容词前缀 ---
     adj_items = _load_json_list(cfg_dir / 'adjective_prefixes.json', 'adjective_prefixes')
-    if adj_items:
-        globals()['ADJECTIVE_PREFIXES'] = set(adj_items)
+    if adj_items is not None:
+        _apply_adjective_prefixes(set(adj_items))
 
     # --- 评分阈值 ---
     thresholds = _load_json_thresholds(cfg_dir / 'thresholds.json')
-    if thresholds:
-        for key, value in thresholds.items():
-            key_upper = key.upper()
-            if key_upper in globals():
-                globals()[key_upper] = value
+    if thresholds is not None:
+        _apply_thresholds(thresholds)
+
+
+# ---- 显式应用函数（每个函数明确修改哪个模块变量） ----
+
+def _apply_whitelist(items: set[str]) -> None:
+    global WHITELIST
+    WHITELIST = items
+
+
+def _apply_blacklist(items: list[str]) -> None:
+    global BLACKLIST
+    BLACKLIST = items
+
+
+def _apply_entity_patterns(items: list[tuple[str, str, int]]) -> None:
+    global ENTITY_PATTERNS
+    ENTITY_PATTERNS = items
+
+
+def _apply_l25_patterns(items: list[tuple[str, str, int]]) -> None:
+    global L25_PATTERNS
+    L25_PATTERNS = items
+
+
+def _apply_exclude_words(items: set[str]) -> None:
+    global EXCLUDE_WORDS
+    EXCLUDE_WORDS = items
+
+
+def _apply_adjective_prefixes(items: set[str]) -> None:
+    global ADJECTIVE_PREFIXES
+    ADJECTIVE_PREFIXES = items
+
+
+def _apply_thresholds(items: dict) -> None:
+    """将阈值 dict 的键映射到模块级变量（显式白名单校验）。"""
+    global SCORE_HIGH_THRESHOLD, SCORE_MEDIUM_THRESHOLD, SCORE_MINIMUM
+    global SCORE_SINGLE_CHAR_PLATFORM, SCORE_L35_PENALTY
+    global SCORE_HIGH_FREQ_BONUS, SCORE_MED_FREQ_BONUS
+    global SCORE_PLAUSIBLE_CHAR_PENALTY
+    global MAX_CONSECUTIVE_BLANK_PARAGRAPHS, LONG_TEXT_THRESHOLD_CHARS
+    global CONTEXT_WINDOW_CHARS, MIN_CANDIDATE_LENGTH
+
+    # 白名单映射：JSON 键名 → 模块变量（显式，mypy 友好）
+    _mapping: dict[str, int] = {
+        'HIGH_THRESHOLD':           SCORE_HIGH_THRESHOLD,
+        'MEDIUM_THRESHOLD':         SCORE_MEDIUM_THRESHOLD,
+        'MINIMUM':                  SCORE_MINIMUM,
+        'SINGLE_CHAR_PLATFORM':     SCORE_SINGLE_CHAR_PLATFORM,
+        'L35_PENALTY':              SCORE_L35_PENALTY,
+        'HIGH_FREQ_BONUS':          SCORE_HIGH_FREQ_BONUS,
+        'MED_FREQ_BONUS':           SCORE_MED_FREQ_BONUS,
+        'PLAUSIBLE_CHAR_PENALTY':   SCORE_PLAUSIBLE_CHAR_PENALTY,
+        'MAX_CONSECUTIVE_BLANK_PARAGRAPHS': MAX_CONSECUTIVE_BLANK_PARAGRAPHS,
+        'LONG_TEXT_THRESHOLD_CHARS': LONG_TEXT_THRESHOLD_CHARS,
+        'CONTEXT_WINDOW_CHARS':     CONTEXT_WINDOW_CHARS,
+        'MIN_CANDIDATE_LENGTH':     MIN_CANDIDATE_LENGTH,
+    }
+
+    for json_key, value in items.items():
+        mapped = _mapping.get(json_key.upper())
+        if mapped is not None:
+            # 使用显式 if-elif 链赋值（避免 exec/globals() 魔法）
+            _assign_threshold(json_key.upper(), value)
+
+
+def _assign_threshold(key: str, value: int) -> None:
+    """显式阈值赋值——每条 if 分支都有明确的变量名，mypy 完全可追踪。"""
+    global SCORE_HIGH_THRESHOLD, SCORE_MEDIUM_THRESHOLD, SCORE_MINIMUM
+    global SCORE_HIGH_FREQ_BONUS, SCORE_MED_FREQ_BONUS
+    global SCORE_SINGLE_CHAR_PLATFORM, SCORE_L35_PENALTY
+    global SCORE_PLAUSIBLE_CHAR_PENALTY
+    global MAX_CONSECUTIVE_BLANK_PARAGRAPHS, LONG_TEXT_THRESHOLD_CHARS
+    global CONTEXT_WINDOW_CHARS, MIN_CANDIDATE_LENGTH
+
+    if key == 'HIGH_THRESHOLD':
+        SCORE_HIGH_THRESHOLD = value
+    elif key == 'MEDIUM_THRESHOLD':
+        SCORE_MEDIUM_THRESHOLD = value
+    elif key == 'MINIMUM':
+        SCORE_MINIMUM = value
+    elif key == 'HIGH_FREQ_BONUS':
+        SCORE_HIGH_FREQ_BONUS = value
+    elif key == 'MED_FREQ_BONUS':
+        SCORE_MED_FREQ_BONUS = value
+    elif key == 'SINGLE_CHAR_PLATFORM':
+        SCORE_SINGLE_CHAR_PLATFORM = value
+    elif key == 'L35_PENALTY':
+        SCORE_L35_PENALTY = value
+    elif key == 'PLAUSIBLE_CHAR_PENALTY':
+        SCORE_PLAUSIBLE_CHAR_PENALTY = value
+    elif key == 'MAX_CONSECUTIVE_BLANK_PARAGRAPHS':
+        MAX_CONSECUTIVE_BLANK_PARAGRAPHS = value
+    elif key == 'LONG_TEXT_THRESHOLD_CHARS':
+        LONG_TEXT_THRESHOLD_CHARS = value
+    elif key == 'CONTEXT_WINDOW_CHARS':
+        CONTEXT_WINDOW_CHARS = value
+    elif key == 'MIN_CANDIDATE_LENGTH':
+        MIN_CANDIDATE_LENGTH = value
 
 
 # 模块加载时自动应用外部化配置

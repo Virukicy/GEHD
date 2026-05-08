@@ -41,7 +41,11 @@ def check_docx(filepath: str, do_verify: bool = False) -> tuple[bool, list[dict]
         (全部通过?, L4队列|None)
     """
     # 加载文档
-    doc = load_docx(filepath)
+    try:
+        doc = load_docx(filepath)
+    except (FileNotFoundError, ValueError) as e:
+        print(f'[ERROR] {e}')
+        return False, None
 
     all_issues: list[str] = []
     all_warnings: list[str] = []

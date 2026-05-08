@@ -9,5 +9,5 @@ GEHD — 泛化实体幻觉检测 (Generalized Entity Hallucination Detection)
   → L3 启发式评分 → L3.6 内部一致性 → L4 联网核查队列
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __all__ = ["engine", "io", "cli", "gui"]

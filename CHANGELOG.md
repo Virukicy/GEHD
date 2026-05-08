@@ -3,11 +3,25 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/) (SemVer 2.0)。
 
-## [0.1.0] — 开发中
+## [0.1.1] — 2026-05-08
+
+### 修复
+- 修复 test_regression.py 中引用已删除模块 `docx_self_check` 的 bug（S1）
+- 统一全部版本号为 0.1.1，清除 v3.6 遗留（S2）
+- check_docx() 文件不存在时优雅降级而非抛异常
+- 修正 pyproject.toml 中 pytest 最低版本声明
+
+---
+
+## [0.1.0] — 2026-05-08
 
 ### 新增
-- Git 仓库初始化、.gitignore、README.md (P0-1)
-- src-layout 标准项目目录结构 (P0-2)
+- Git 仓库初始化、.gitignore、README.md（P0-1）
+- src-layout 标准项目目录结构（P0-2）
+- pyproject.toml 项目元数据与依赖声明（P0-3）
+- 将 806 行单文件脚本拆分为 14 个模块（P0-4）
+- 外部化配置：7 个 JSON 文件（P0-5）
+- GitHub 远程仓库推送
 
 ---
 
