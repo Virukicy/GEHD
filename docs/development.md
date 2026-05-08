@@ -257,7 +257,7 @@ AI 代理使用 GEHD 的完整流程（详见 [ai-guide.md](./ai-guide.md)）：
 | R7 | 缺少 `.editorconfig` | ✅ P1-2 已修复 |
 | R8 | `config.py` 使用四层 `parent` 相对路径 | ✅ P1-0 已修复（parents[3]） |
 | — | `scorers/` 目录为空壳 | ⏳ 待处理 |
-| — | 测试覆盖率不足（仅回归测试，无单元测试） | ⏳ P1-5 进行中 |
+| — | 测试覆盖率不足（仅回归测试，无单元测试） | ✅ P1-5 已修复（27 单元测试，85%） |
 
 ### 设计决策：print vs logging
 
