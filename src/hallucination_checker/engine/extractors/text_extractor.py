@@ -6,6 +6,7 @@
 """
 
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -26,13 +27,13 @@ def extract_all_text(doc: Document) -> list[tuple[str, str]]:
     # 提取段落文本
     for i, para in enumerate(doc.paragraphs):
         if para.text.strip():
-            parts.append((f"P{i + 1}", para.text))
+            parts.append((f'P{i + 1}', para.text))
 
     # 提取表格文本
     for ti, table in enumerate(doc.tables):
         for ri, row in enumerate(table.rows):
             for ci, cell in enumerate(row.cells):
                 if cell.text.strip():
-                    parts.append((f"T{ti + 1}[{ri + 1},{ci + 1}]", cell.text))
+                    parts.append((f'T{ti + 1}[{ri + 1},{ci + 1}]', cell.text))
 
     return parts

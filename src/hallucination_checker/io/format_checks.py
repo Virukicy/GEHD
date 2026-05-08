@@ -29,9 +29,7 @@ def check_markdown(doc: Document) -> list[str]:
             for ci, cell in enumerate(row.cells):
                 for pat in patterns:
                     if re.search(pat, cell.text):
-                        issues.append(
-                            f'[MARKDOWN] T{ti + 1}[{ri + 1},{ci + 1}] markdown残留'
-                        )
+                        issues.append(f'[MARKDOWN] T{ti + 1}[{ri + 1},{ci + 1}] markdown残留')
 
     return issues
 
@@ -42,13 +40,10 @@ def check_empty_table_rows(doc: Document) -> list[str]:
 
     for ti, table in enumerate(doc.tables):
         empty_rows = sum(
-            1 for row in table.rows
-            if all(cell.text.strip() == '' for cell in row.cells)
+            1 for row in table.rows if all(cell.text.strip() == '' for cell in row.cells)
         )
         if empty_rows > 0:
-            issues.append(
-                f'[空表行] 表格{ti + 1}: {empty_rows}个空行 / 共{len(table.rows)}行'
-            )
+            issues.append(f'[空表行] 表格{ti + 1}: {empty_rows}个空行 / 共{len(table.rows)}行')
 
     return issues
 
@@ -71,8 +66,7 @@ def check_blank_paragraphs(doc: Document, config: GEHDConfig) -> list[str]:
     limit = config.max_consecutive_blank_paragraphs
     if max_consec > limit:
         issues.append(
-            f'[空白] 连续{max_consec}个空段 '
-            f'(P{min(empty_positions)}-P{max(empty_positions)})'
+            f'[空白] 连续{max_consec}个空段 (P{min(empty_positions)}-P{max(empty_positions)})'
         )
 
     cover_empties = sum(1 for p in list(doc.paragraphs)[:8] if p.text.strip() == '')
@@ -85,8 +79,12 @@ def check_blank_paragraphs(doc: Document, config: GEHDConfig) -> list[str]:
 def check_emoji(doc: Document) -> list[str]:
     """Check 4: 检测 Emoji 和方块字符。"""
     emoji_ranges = [
-        (0x1F300, 0x1F9FF), (0x2600, 0x26FF), (0x2700, 0x27BF),
-        (0xFE00, 0xFE0F), (0x1FA00, 0x1FA6F), (0x1FA70, 0x1FAFF),
+        (0x1F300, 0x1F9FF),
+        (0x2600, 0x26FF),
+        (0x2700, 0x27BF),
+        (0xFE00, 0xFE0F),
+        (0x1FA00, 0x1FA6F),
+        (0x1FA70, 0x1FAFF),
         (0x2300, 0x23FF),
     ]
     issues: list[str] = []
@@ -110,8 +108,7 @@ def check_long_text(doc: Document, config: GEHDConfig) -> list[str]:
             for ci, cell in enumerate(row.cells):
                 if len(cell.text) > config.long_text_threshold_chars:
                     warnings.append(
-                        f'[长文本] T{ti + 1}[{ri + 1},{ci + 1}] '
-                        f'{len(cell.text)}字可能截断'
+                        f'[长文本] T{ti + 1}[{ri + 1},{ci + 1}] {len(cell.text)}字可能截断'
                     )
 
     return warnings

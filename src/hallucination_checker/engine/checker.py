@@ -3,18 +3,19 @@ GEHD 主编排器 —— 组合 L1→L4 全链路核查流程。
 """
 
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from docx.document import Document
 
-from .layers.l2_blacklist import scan_blacklist
-from .layers.l25_nonentity import detect_non_entity, deduplicate_l25
-from .layers.l3_heuristic import extract_and_score, deduplicate_entities
-from .layers.l36_consistency import run_consistency_checks
-from .layers.l4_verify import build_verify_queue
-from .extractors.text_extractor import extract_all_text
 from .config import GEHDConfig
+from .extractors.text_extractor import extract_all_text
+from .layers.l2_blacklist import scan_blacklist
+from .layers.l3_heuristic import deduplicate_entities, extract_and_score
+from .layers.l4_verify import build_verify_queue
+from .layers.l25_nonentity import deduplicate_l25, detect_non_entity
+from .layers.l36_consistency import run_consistency_checks
 
 
 def gehd_check(
@@ -66,9 +67,7 @@ def gehd_check(
         warnings.append(f'\n  --- L3.6 内部一致性检查 ({len(consistency_issues)}条) ---')
         for ci in consistency_issues:
             loc_str = ci.get('location', '')
-            warnings.append(
-                f'[一致性-{ci["type"]}] {loc_str} "{ci["word"]}": {ci["detail"]}'
-            )
+            warnings.append(f'[一致性-{ci["type"]}] {loc_str} "{ci["word"]}": {ci["detail"]}')
 
     # 分级输出
     for ent in l3_ranked:
@@ -79,14 +78,14 @@ def gehd_check(
             )
         elif ent['score'] >= config.score_medium_threshold:
             warnings.append(
-                f'[实体待核实] {ent["location"]} [{ent["category"]}={ent["score"]}] '
-                f'"{ent["word"]}"'
+                f'[实体待核实] {ent["location"]} [{ent["category"]}={ent["score"]}] "{ent["word"]}"'
             )
 
     # 统计
     high_risk = sum(1 for e in l3_ranked if e['score'] >= config.score_high_threshold)
     medium_risk = sum(
-        1 for e in l3_ranked
+        1
+        for e in l3_ranked
         if config.score_medium_threshold <= e['score'] < config.score_high_threshold
     )
 

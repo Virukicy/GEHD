@@ -4,27 +4,29 @@ CLI 主入口 —— 命令行参数解析与流程编排。
 
 import sys
 
+from ..engine.checker import gehd_check
+from ..engine.config import GEHDConfig, load_config
+from ..engine.layers.l4_verify import export_queue, load_cache
 from ..io.docx_reader import load_docx
 from ..io.format_checks import (
-    check_markdown,
-    check_empty_table_rows,
     check_blank_paragraphs,
     check_emoji,
+    check_empty_table_rows,
     check_long_text,
+    check_markdown,
 )
 from ..io.reporter import (
-    print_report_header,
-    print_issues_and_warnings,
     print_gehd_stats,
+    print_issues_and_warnings,
     print_l4_summary,
     print_report_footer,
+    print_report_header,
 )
-from ..engine.checker import gehd_check
-from ..engine.layers.l4_verify import export_queue, load_cache
-from ..engine.config import load_config, GEHDConfig
 
 
-def check_docx(filepath: str, do_verify: bool = False, config: GEHDConfig | None = None) -> tuple[bool, list[dict] | None]:
+def check_docx(
+    filepath: str, do_verify: bool = False, config: GEHDConfig | None = None
+) -> tuple[bool, list[dict] | None]:
     """对单个 docx 文件执行全部检查。
 
     Args:

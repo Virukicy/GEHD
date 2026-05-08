@@ -12,8 +12,6 @@ def scan_blacklist(all_parts: list[tuple[str, str]], config: GEHDConfig) -> list
     for loc, text in all_parts:
         for fake in config.blacklist:
             if fake in text:
-                issues.append(
-                    f'[幻觉-L2] {loc} 虚构词 "{fake}": "{text[:55]}"'
-                )
+                issues.append(f'[幻觉-L2] {loc} 虚构词 "{fake}": "{text[:55]}"')
 
     return issues

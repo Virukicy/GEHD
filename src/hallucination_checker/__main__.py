@@ -5,8 +5,8 @@
   - 开发模式（未安装）：自动添加 src/ 到 sys.path
 """
 
-import sys
 import os
+import sys
 
 
 def _ensure_import_path() -> None:
@@ -17,14 +17,13 @@ def _ensure_import_path() -> None:
     """
     try:
         import hallucination_checker  # noqa: F401
+
         return  # 包已安装，无需额外操作
     except ImportError:
         pass
 
     # 开发模式回退：添加 src/ 到 sys.path
-    _project_root = os.path.dirname(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    )
+    _project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     _src_path = os.path.join(_project_root, 'src')
     if _src_path not in sys.path:
         sys.path.insert(0, _src_path)
@@ -36,6 +35,7 @@ _ensure_import_path()
 def main():
     """主入口 — 薄层，委托给 cli/main.py"""
     from hallucination_checker.cli.main import main as cli_main
+
     cli_main()
 
 

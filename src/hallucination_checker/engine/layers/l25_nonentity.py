@@ -7,9 +7,7 @@ import re
 from ..config import GEHDConfig
 
 
-def detect_non_entity(
-    all_parts: list[tuple[str, str]], config: GEHDConfig
-) -> list[dict]:
+def detect_non_entity(all_parts: list[tuple[str, str]], config: GEHDConfig) -> list[dict]:
     """检测非实体幻觉候选。"""
     candidates: list[dict] = []
 
@@ -17,7 +15,11 @@ def detect_non_entity(
         for pattern, category, base_score in config.l25_patterns:
             for m in re.finditer(pattern, text):
                 try:
-                    word = m.group(1).strip() if m.lastindex and m.lastindex >= 1 else m.group().strip()
+                    word = (
+                        m.group(1).strip()
+                        if m.lastindex and m.lastindex >= 1
+                        else m.group().strip()
+                    )
                 except IndexError:
                     word = m.group().strip()
 
@@ -27,14 +29,16 @@ def detect_non_entity(
                     continue
 
                 cw = config.context_window_chars
-                context = text[max(0, m.start() - cw):m.end() + cw]
-                candidates.append({
-                    'word': word,
-                    'category': category,
-                    'score': base_score,
-                    'location': loc,
-                    'context': context,
-                })
+                context = text[max(0, m.start() - cw) : m.end() + cw]
+                candidates.append(
+                    {
+                        'word': word,
+                        'category': category,
+                        'score': base_score,
+                        'location': loc,
+                        'context': context,
+                    }
+                )
 
     return candidates
 

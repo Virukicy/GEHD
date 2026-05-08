@@ -3,6 +3,7 @@
 """
 
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -69,21 +70,26 @@ def print_l4_summary(
         print(f'  [L4缓存] 已加载{cached_count}条历史验证结果')
 
     for idx, item in enumerate(l4_queue, 1):
-        mark = ('***' if item['score'] >= config.score_high_threshold
-                else (' *' if item['score'] >= config.score_medium_threshold else ''))
+        mark = (
+            '***'
+            if item['score'] >= config.score_high_threshold
+            else (' *' if item['score'] >= config.score_medium_threshold else '')
+        )
         tier = '[深]' if item['score'] >= dst else '[快]'
         print(
             f'    {idx:2d}. [{item["score"]:2d}分]{tier} '
             f'{item["word"]:<20s} ({item["category"]}){mark}'
         )
 
-    print(f'\n  [L4说明] ***=高危 *=中危 其余=低危 | [深]=深度搜索 [快]=快速搜索')
-    print(f'  [L4说明] verdict枚举: verified_real / verified_fake / need_manual_check / unable_to_verify')
+    print('\n  [L4说明] ***=高危 *=中危 其余=低危 | [深]=深度搜索 [快]=快速搜索')
+    print(
+        '  [L4说明] verdict枚举: verified_real / verified_fake / need_manual_check / unable_to_verify'
+    )
 
 
 def print_report_footer() -> None:
     """打印报告尾部声明。"""
     print('=' * 65)
-    print(f'  [声明] 本报告仅提供可疑候选列表，不构成最终事实判定。')
-    print(f'         所有中危/低危项需经L4联网核查或人工确认后方可采信。')
+    print('  [声明] 本报告仅提供可疑候选列表，不构成最终事实判定。')
+    print('         所有中危/低危项需经L4联网核查或人工确认后方可采信。')
     print('=' * 65)

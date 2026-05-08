@@ -32,12 +32,14 @@ def check_entity_frequency(candidates: list[dict]) -> list[dict]:
     for word, occurrences in entity_locations.items():
         if len(occurrences) >= 3:
             locations_str = ', '.join(o['location'] for o in occurrences[:3])
-            issues.append({
-                'type': '高频实体',
-                'word': word,
-                'detail': f'"{word}"出现{len(occurrences)}次 ({locations_str})',
-                'locations': [o['location'] for o in occurrences],
-            })
+            issues.append(
+                {
+                    'type': '高频实体',
+                    'word': word,
+                    'detail': f'"{word}"出现{len(occurrences)}次 ({locations_str})',
+                    'locations': [o['location'] for o in occurrences],
+                }
+            )
 
     return issues
 
@@ -59,12 +61,14 @@ def check_amount_conflicts(all_parts: list[tuple[str, str]]) -> list[dict]:
     for loc, text in all_parts:
         amounts = amount_pattern.findall(text)
         if len(amounts) >= 2:
-            issues.append({
-                'type': '多金额共存',
-                'word': '|'.join(amounts[:3]),
-                'detail': f'{loc}同时出现{len(amounts)}个金额数字: {amounts}',
-                'location': loc,
-            })
+            issues.append(
+                {
+                    'type': '多金额共存',
+                    'word': '|'.join(amounts[:3]),
+                    'detail': f'{loc}同时出现{len(amounts)}个金额数字: {amounts}',
+                    'location': loc,
+                }
+            )
 
     return issues
 

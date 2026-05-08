@@ -4,8 +4,8 @@ L3 启发式实体提取与评分层 —— GEHD 的核心引擎。
 
 import re
 
-from .l1_whitelist import check_substring_whitelist
 from ..config import GEHDConfig
+from .l1_whitelist import check_substring_whitelist
 
 
 def extract_and_score(
@@ -18,7 +18,11 @@ def extract_and_score(
         for pattern, category, base_score in config.entity_patterns:
             for m in re.finditer(pattern, text):
                 try:
-                    word = m.group(1).strip() if m.lastindex and m.lastindex >= 1 else m.group().strip()
+                    word = (
+                        m.group(1).strip()
+                        if m.lastindex and m.lastindex >= 1
+                        else m.group().strip()
+                    )
                 except IndexError:
                     word = m.group().strip()
 
@@ -65,20 +69,24 @@ def extract_and_score(
                     score += config.score_med_freq_bonus
 
                 # 可信字符降分
-                plausible_chars = any(c in word for c in ['淘', '京', '拼', '多', '美', '苏', '阿', '腾', '百'])
+                plausible_chars = any(
+                    c in word for c in ['淘', '京', '拼', '多', '美', '苏', '阿', '腾', '百']
+                )
                 if plausible_chars and category in ('电商平台名', '公司机构名'):
                     score += config.score_plausible_char_penalty
 
                 score = max(config.score_minimum, score)
 
                 cw = config.context_window_chars
-                candidates.append({
-                    'word': word,
-                    'category': category,
-                    'score': score,
-                    'location': loc,
-                    'context': text[max(0, m.start() - cw):m.end() + cw],
-                })
+                candidates.append(
+                    {
+                        'word': word,
+                        'category': category,
+                        'score': score,
+                        'location': loc,
+                        'context': text[max(0, m.start() - cw) : m.end() + cw],
+                    }
+                )
 
     return candidates
 
@@ -103,9 +111,11 @@ def _is_excluded(word: str, config: GEHDConfig) -> bool:
         return True
 
     for ex in config.exclude_words:
-        if (word.startswith(ex)
-                and len(word) <= len(ex) + 1
-                and not any(word.endswith(suf) for suf in config.entity_suffixes_for_exclusion)):
+        if (
+            word.startswith(ex)
+            and len(word) <= len(ex) + 1
+            and not any(word.endswith(suf) for suf in config.entity_suffixes_for_exclusion)
+        ):
             return True
 
     return False
