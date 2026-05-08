@@ -17,6 +17,8 @@ def extract_and_score(
     for loc, text in all_parts:
         for pattern, category, base_score in config.entity_patterns:
             for m in re.finditer(pattern, text):
+                # 保存原始 base_score，避免循环内修改污染后续匹配
+                score_base = base_score
                 try:
                     word = (
                         m.group(1).strip()
@@ -42,14 +44,14 @@ def extract_and_score(
                     continue
                 if matched_wl:
                     score_penalty = min(15, len(remainder) * 3)
-                    base_score = max(30, base_score - score_penalty)
+                    score_base = max(30, score_base - score_penalty)
 
                 # 排除词过滤
                 if _is_excluded(word, config):
                     continue
 
                 # 评分
-                score = base_score
+                score = score_base
 
                 # L3.5: 形容词前缀降分
                 for adj in config.adjective_prefixes:
