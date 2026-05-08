@@ -33,7 +33,9 @@ def load_docx(filepath: str) -> Document:
 
     try:
         doc = _DocumentFactory(filepath)
-    except Exception as e:
-        raise ValueError(f'无法读取 docx 文件: {e}') from e
+    except ValueError as e:
+        raise ValueError(f'无法读取 docx 文件（格式损坏）: {e}') from e
+    except OSError as e:
+        raise ValueError(f'无法读取 docx 文件（IO错误）: {e}') from e
 
     return doc

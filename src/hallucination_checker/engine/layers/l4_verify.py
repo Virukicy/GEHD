@@ -102,5 +102,5 @@ def load_cache(filepath: str) -> tuple[int, list[dict]]:
             cache = json.load(f)
         verified = cache.get('verified_entities', [])
         return len(verified), verified
-    except Exception:
+    except (json.JSONDecodeError, OSError):
         return 0, []
