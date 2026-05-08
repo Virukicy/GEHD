@@ -41,7 +41,6 @@ class CheckResult:
     """封装 check_docx() 的返回结果，提供便捷查询方法"""
 
     def __init__(self, filepath, do_verify=False):
-        # 捕获 print 输出
         from io import StringIO
 
         from hallucination_checker.cli.main import check_docx

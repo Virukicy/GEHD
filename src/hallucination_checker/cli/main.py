@@ -22,6 +22,9 @@ from ..io.reporter import (
     print_report_footer,
     print_report_header,
 )
+from ..logging_setup import get_logger
+
+logger = get_logger(__name__)
 
 
 def check_docx(
@@ -44,6 +47,7 @@ def check_docx(
     try:
         doc = load_docx(filepath)
     except (FileNotFoundError, ValueError) as e:
+        logger.error('文档加载失败: %s', e)
         print(f'[ERROR] {e}')
         return False, None
 
@@ -76,15 +80,23 @@ def check_docx(
 
     print_report_footer()
 
-    return len(all_issues) == 0, l4_queue if do_verify else None
+    ok = len(all_issues) == 0
+    logger.info(
+        '核查完成: %s, issues=%d, warnings=%d, l4=%d',
+        '通过' if ok else '发现问题',
+        len(all_issues),
+        len(all_warnings),
+        len(l4_queue) if do_verify else 0,
+    )
+    return ok, l4_queue if do_verify else None
 
 
 def main() -> None:
     """CLI 主入口。"""
     if len(sys.argv) < 2:
-        print('用法:')
-        print('  python -m hallucination_checker <docx文件路径>')
-        print('  python -m hallucination_checker <docx文件路径> --verify  # 输出L4核查队列')
+        logger.info('用法:')
+        logger.info('  python -m hallucination_checker <docx文件路径>')
+        logger.info('  python -m hallucination_checker <docx文件路径> --verify  # 输出L4核查队列')
         sys.exit(1)
 
     do_verify = '--verify' in sys.argv

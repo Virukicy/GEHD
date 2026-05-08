@@ -9,12 +9,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from docx.document import Document
 
-from ..engine.config import (
-    GEHD_VERSION,
-    GEHD_VERSION_DATE,
-    GEHD_VERSION_HASH,
-    GEHDConfig,
-)
+from ..engine.config import GEHD_VERSION, GEHD_VERSION_DATE, GEHD_VERSION_HASH, GEHDConfig
 
 
 def print_report_header(filepath: str, doc: Document) -> None:
