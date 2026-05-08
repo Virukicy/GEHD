@@ -3,6 +3,18 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/) (SemVer 2.0)。
 
+## [0.1.3-dev] — 开发中 (2026-05-09)
+
+### Iteration 2 进展 (5/6 完成)
+
+- **P1-0**: GEHDConfig dataclass 重构 — 30+全局变量→单一配置数据类，删除 _apply_external_config 等 90 行机械代码
+- **P1-1**: 全量类型注解 — mypy 22 文件零错误，TYPE_CHECKING 模式导入 Document 类型
+- **P1-2**: Ruff 格式化 + lint — 16 文件格式化，25 lint→0，新增 .editorconfig
+- **P1-3**: logging 文件日志 — gehd.log 含时间戳和结构化消息，终端输出保持 print()（测试兼容）
+- **P1-4**: 异常处理标准化 — except Exception→精确类型（ValueError/OSError/JSONDecodeError）
+
+---
+
 ## [0.1.2] — 2026-05-08
 
 ### 修复

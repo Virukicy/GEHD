@@ -249,16 +249,21 @@ AI 代理使用 GEHD 的完整流程（详见 [ai-guide.md](./ai-guide.md)）：
 
 ## 七、当前已知技术债务
 
-| 编号 | 问题 | 计划修复 |
+| 编号 | 问题 | 状态 |
 |------|------|------|
-| M1 | `io/format_checks.py` 函数参数缺类型注解 | P1-1 |
-| M2 | 候选实体使用裸 `dict`，无 `TypedDict` | P1-1 |
-| M5 | 去重逻辑在两处重复 | P1-0 |
-| R7 | 缺少 `.editorconfig` | P1-2 |
-| R8 | `config.py` 使用四层 `parent` 相对路径 | P1-0 |
-| — | `scorers/` 目录为空壳 | P1-0 后填充或删除 |
-| — | `reporter.py` 使用 `print()` 而非 logging | P1-3 |
-| — | 测试覆盖率不足（仅回归测试，无单元测试） | P1-5 |
+| M1 | `io/format_checks.py` 函数参数缺类型注解 | ✅ P1-1 已修复 |
+| M2 | 候选实体使用裸 `dict`，无 `TypedDict` | ⏳ 待处理 |
+| M5 | 去重逻辑在两处重复 | ⏳ 待处理 |
+| R7 | 缺少 `.editorconfig` | ✅ P1-2 已修复 |
+| R8 | `config.py` 使用四层 `parent` 相对路径 | ✅ P1-0 已修复（parents[3]） |
+| — | `scorers/` 目录为空壳 | ⏳ 待处理 |
+| — | 测试覆盖率不足（仅回归测试，无单元测试） | ⏳ P1-5 进行中 |
+
+### 设计决策：print vs logging
+
+终端用户输出保持 `print()`，内部诊断使用 `logging` 写 `gehd.log`。
+原因：`StreamHandler` 绑定对象引用而非变量名，测试框架替换 `sys.stdout` 时无法跟随。
+功能零损失——日志含时间戳和结构化消息，满足审计需求。
 
 ---
 

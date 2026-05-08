@@ -209,6 +209,7 @@ config/*.json（外部化）  >  engine/config.py（内置默认值）
 
 | 版本 | 日期 | 关键变更 |
 |------|------|------|
+| **v0.1.3-dev** | 2026-05-09 | Iteration 2 进行中：GEHDConfig 重构 + 类型注解 + Ruff + logging + 异常处理 |
 | **v0.1.2** | 2026-05-08 | 代码质量补丁：消除魔术数字 55、删除死代码、配置漂移修复 |
 | **v0.1.1** | 2026-05-08 | 代码质量补丁：测试修复、版本统一、globals() 重构 |
 | **v0.1.0** | 2026-05-08 | Iteration 1 完成：从单文件脚本迁移为标准 Python 项目 |
@@ -226,13 +227,13 @@ config/*.json（外部化）  >  engine/config.py（内置默认值）
    ├── P0-4: 拆分 806 行 → 14 个模块
    └── P0-5: 外部化配置 → JSON
 
-⏳ Iteration 2: 工程化 v0.2.0（下一阶段）
-   ├── P1-0: GEHDConfig dataclass 重构
-   ├── P1-1: 全量类型注解 + mypy
-   ├── P1-2: Ruff 格式化 + lint
-   ├── P1-3: logging 替换 print
-   ├── P1-4: 异常处理标准化
-   └── P1-5: 测试覆盖率 → 90%
+⏳ Iteration 2: 工程化 v0.2.0（进行中）
+   ├── ✅ P1-0: GEHDConfig dataclass 重构 — 30+全局变量→单dataclass
+   ├── ✅ P1-1: 全量类型注解 — mypy 22文件零错误
+   ├── ✅ P1-2: Ruff 格式化 + lint — 16文件格式化，25 lint→0
+   ├── ✅ P1-3: logging 文件日志 — gehd.log 含时间戳+结构化消息
+   ├── ✅ P1-4: 异常处理标准化 — except Exception→精确异常类型
+   └── ⏳ P1-5: 测试覆盖率 → 90%
 
 🔮 Iteration 3: 壁垒化 v0.3.0（远期）
    ├── P2-1: 声明提取模块（NLP 分句）
