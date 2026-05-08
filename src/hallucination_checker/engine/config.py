@@ -33,7 +33,6 @@ SCORE_SINGLE_CHAR_PLATFORM = 15  # 单字平台加分（购/宝/东）
 SCORE_HIGH_FREQ_BONUS = 10     # 高频加分（count>=3）
 SCORE_MED_FREQ_BONUS = 3       # 中频加分（count>=2）
 SCORE_PLAUSIBLE_CHAR_PENALTY = -10  # 可信字符降分
-SCORE_ECOMMERCE_EXTRA = 20     # 电商平台额外加分
 
 # ============================================================
 # L4 协议常量
@@ -53,6 +52,7 @@ MAX_CONSECUTIVE_BLANK_PARAGRAPHS = 3
 LONG_TEXT_THRESHOLD_CHARS = 300
 CONTEXT_WINDOW_CHARS = 10
 MIN_CANDIDATE_LENGTH = 2
+DEEP_SEARCH_THRESHOLD = 55  # L4 深度搜索分数线
 
 # ============================================================
 # L1: 白名单 —— 已知真实存在的专有名词，直接放行
@@ -276,7 +276,7 @@ def _load_json_list(filepath: Path, key: str) -> list[str] | None:
         items = data.get(key, [])
         if isinstance(items, list) and len(items) > 0:
             return items
-    except (json.JSONDecodeError, FileNotFoundError, KeyError):
+    except (json.JSONDecodeError, FileNotFoundError):
         pass
     return None
 
@@ -293,7 +293,7 @@ def _load_json_patterns(filepath: Path, key: str) -> list[tuple[str, str, int]] 
                 for item in items
                 if all(k in item for k in ('pattern', 'category', 'base_score'))
             ]
-    except (json.JSONDecodeError, FileNotFoundError, KeyError):
+    except (json.JSONDecodeError, FileNotFoundError):
         pass
     return None
 
@@ -399,29 +399,31 @@ def _apply_thresholds(items: dict) -> None:
     global SCORE_HIGH_FREQ_BONUS, SCORE_MED_FREQ_BONUS
     global SCORE_PLAUSIBLE_CHAR_PENALTY
     global MAX_CONSECUTIVE_BLANK_PARAGRAPHS, LONG_TEXT_THRESHOLD_CHARS
-    global CONTEXT_WINDOW_CHARS, MIN_CANDIDATE_LENGTH
+    global CONTEXT_WINDOW_CHARS, MIN_CANDIDATE_LENGTH, DEEP_SEARCH_THRESHOLD
 
-    # 白名单映射：JSON 键名 → 模块变量（显式，mypy 友好）
-    _mapping: dict[str, int] = {
-        'HIGH_THRESHOLD':           SCORE_HIGH_THRESHOLD,
-        'MEDIUM_THRESHOLD':         SCORE_MEDIUM_THRESHOLD,
-        'MINIMUM':                  SCORE_MINIMUM,
-        'SINGLE_CHAR_PLATFORM':     SCORE_SINGLE_CHAR_PLATFORM,
-        'L35_PENALTY':              SCORE_L35_PENALTY,
-        'HIGH_FREQ_BONUS':          SCORE_HIGH_FREQ_BONUS,
-        'MED_FREQ_BONUS':           SCORE_MED_FREQ_BONUS,
-        'PLAUSIBLE_CHAR_PENALTY':   SCORE_PLAUSIBLE_CHAR_PENALTY,
-        'MAX_CONSECUTIVE_BLANK_PARAGRAPHS': MAX_CONSECUTIVE_BLANK_PARAGRAPHS,
-        'LONG_TEXT_THRESHOLD_CHARS': LONG_TEXT_THRESHOLD_CHARS,
-        'CONTEXT_WINDOW_CHARS':     CONTEXT_WINDOW_CHARS,
-        'MIN_CANDIDATE_LENGTH':     MIN_CANDIDATE_LENGTH,
+    # 白名单键名集合（仅验证 key 合法性，不做值映射）
+    _valid_keys = {
+        'HIGH_THRESHOLD', 'MEDIUM_THRESHOLD', 'MINIMUM',
+        'ADJECTIVE_PENALTY',
+        'SINGLE_CHAR_PLATFORM', 'L35_PENALTY',
+        'HIGH_FREQ_BONUS', 'MED_FREQ_BONUS', 'PLAUSIBLE_CHAR_PENALTY',
+        'MAX_CONSECUTIVE_BLANK_PARAGRAPHS', 'LONG_TEXT_THRESHOLD_CHARS',
+        'CONTEXT_WINDOW_CHARS', 'MIN_CANDIDATE_LENGTH', 'DEEP_SEARCH_THRESHOLD',
     }
 
     for json_key, value in items.items():
-        mapped = _mapping.get(json_key.upper())
-        if mapped is not None:
-            # 使用显式 if-elif 链赋值（避免 exec/globals() 魔法）
-            _assign_threshold(json_key.upper(), value)
+        # 跳过注释键（以下划线开头）
+        if json_key.startswith('_'):
+            continue
+        key_upper = json_key.upper()
+        if key_upper in _valid_keys:
+            _assign_threshold(key_upper, value)
+        else:
+            import warnings as _w
+            _w.warn(
+                f'[GEHD config] 未知的阈值键 "{json_key}" → 已忽略。'
+                f'请检查 config/thresholds.json 中的键名是否正确。'
+            )
 
 
 def _assign_threshold(key: str, value: int) -> None:
@@ -431,7 +433,7 @@ def _assign_threshold(key: str, value: int) -> None:
     global SCORE_SINGLE_CHAR_PLATFORM, SCORE_L35_PENALTY
     global SCORE_PLAUSIBLE_CHAR_PENALTY
     global MAX_CONSECUTIVE_BLANK_PARAGRAPHS, LONG_TEXT_THRESHOLD_CHARS
-    global CONTEXT_WINDOW_CHARS, MIN_CANDIDATE_LENGTH
+    global CONTEXT_WINDOW_CHARS, MIN_CANDIDATE_LENGTH, DEEP_SEARCH_THRESHOLD
 
     if key == 'HIGH_THRESHOLD':
         SCORE_HIGH_THRESHOLD = value
@@ -439,6 +441,8 @@ def _assign_threshold(key: str, value: int) -> None:
         SCORE_MEDIUM_THRESHOLD = value
     elif key == 'MINIMUM':
         SCORE_MINIMUM = value
+    elif key == 'ADJECTIVE_PENALTY':
+        SCORE_ADJECTIVE_PENALTY = value
     elif key == 'HIGH_FREQ_BONUS':
         SCORE_HIGH_FREQ_BONUS = value
     elif key == 'MED_FREQ_BONUS':
@@ -457,6 +461,8 @@ def _assign_threshold(key: str, value: int) -> None:
         CONTEXT_WINDOW_CHARS = value
     elif key == 'MIN_CANDIDATE_LENGTH':
         MIN_CANDIDATE_LENGTH = value
+    elif key == 'DEEP_SEARCH_THRESHOLD':
+        DEEP_SEARCH_THRESHOLD = value
 
 
 # 模块加载时自动应用外部化配置

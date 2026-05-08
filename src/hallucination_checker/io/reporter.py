@@ -11,6 +11,7 @@ from ..engine.config import (
     GEHD_VERSION_HASH,
     SCORE_HIGH_THRESHOLD,
     SCORE_MEDIUM_THRESHOLD,
+    DEEP_SEARCH_THRESHOLD,
 )
 
 
@@ -56,9 +57,9 @@ def print_l4_summary(l4_queue: list[dict], queue_file: str, cached_count: int) -
     print(f'\n  === L4 联网核查队列 ({len(l4_queue)} 个待验证) ===')
 
     # 分层策略
-    deep_count = sum(1 for q in l4_queue if q['score'] >= 55)
+    deep_count = sum(1 for q in l4_queue if q['score'] >= DEEP_SEARCH_THRESHOLD)
     quick_count = len(l4_queue) - deep_count
-    print(f'  [L4分层] 深度搜索({deep_count}个,≥55分) + 快速搜索({quick_count}个,<55分)')
+    print(f'  [L4分层] 深度搜索({deep_count}个,≥{DEEP_SEARCH_THRESHOLD}分) + 快速搜索({quick_count}个,<{DEEP_SEARCH_THRESHOLD}分)')
     print(f'  [L4] 验证队列已导出: {queue_file}')
 
     if cached_count > 0:
@@ -68,7 +69,7 @@ def print_l4_summary(l4_queue: list[dict], queue_file: str, cached_count: int) -
     for idx, item in enumerate(l4_queue, 1):
         mark = ('***' if item['score'] >= SCORE_HIGH_THRESHOLD
                 else (' *' if item['score'] >= SCORE_MEDIUM_THRESHOLD else ''))
-        tier = '[深]' if item['score'] >= 55 else '[快]'
+        tier = '[深]' if item['score'] >= DEEP_SEARCH_THRESHOLD else '[快]'
         print(
             f'    {idx:2d}. [{item["score"]:2d}分]{tier} '
             f'{item["word"]:<20s} ({item["category"]}){mark}'

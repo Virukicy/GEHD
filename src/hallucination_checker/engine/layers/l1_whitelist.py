@@ -13,23 +13,6 @@ L1 白名单放行层 —— 已知真实存在的专有名词直接跳过，不
 from ..config import WHITELIST
 
 
-def check_whitelist(word: str) -> str | None:
-    """检查候选词是否应在白名单中放行。
-
-    Args:
-        word: 候选实体词
-
-    Returns:
-        None → 放行（跳过后续检测）
-        字符串 → 匹配到的白名单词（用于子串白名单的进一步检查）
-    """
-    # 精确匹配
-    if word in WHITELIST:
-        return None
-
-    return None  # 精确不匹配，进入子串检查阶段
-
-
 def check_substring_whitelist(word: str) -> tuple[str | None, bool, str]:
     """子串白名单检查 —— 处理"华为技术有限公司"这类复合名。
 

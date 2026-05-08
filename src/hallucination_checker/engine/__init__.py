@@ -2,8 +2,8 @@
 
 子模块：
   config    — 配置常量（阈值、魔术字符串、白/黑名单、正则模式）
-  layers/   — L1~L4 各层规则引擎
+  layers/   — L1~L4 各层规则引擎（含评分逻辑）
   extractors/ — 文本提取与预处理
-  scorers/  — 评分逻辑
+  scorers/  — 评分逻辑（待实现，当前评分逻辑在 layers/l3_heuristic.py）
   checker   — 主核查流程（gehd_check 入口）
 """

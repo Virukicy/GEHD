@@ -15,6 +15,7 @@ from ..config import (
     GEHD_VERSION,
     SCORE_HIGH_THRESHOLD,
     SCORE_MEDIUM_THRESHOLD,
+    DEEP_SEARCH_THRESHOLD,
     L4_STATUS_PENDING,
     L4_VERDICT_REAL,
     L4_VERDICT_FAKE,
@@ -89,13 +90,13 @@ def export_queue(filepath: str, l4_queue: list[dict]) -> str:
         "total_pending": len(l4_queue),
         "tiered_strategy": {
             "deep_search": {
-                "condition": "score >= 55",
-                "count": sum(1 for q in l4_queue if q['score'] >= 55),
+                "condition": f"score >= {DEEP_SEARCH_THRESHOLD}",
+                "count": sum(1 for q in l4_queue if q['score'] >= DEEP_SEARCH_THRESHOLD),
                 "method": "多引擎交叉验证 + 来源追溯",
             },
             "quick_search": {
-                "condition": "score < 55",
-                "count": sum(1 for q in l4_queue if q['score'] < 55),
+                "condition": f"score < {DEEP_SEARCH_THRESHOLD}",
+                "count": sum(1 for q in l4_queue if q['score'] < DEEP_SEARCH_THRESHOLD),
                 "method": "单引擎快速判断 + 首页验证",
             },
         },
