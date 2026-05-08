@@ -46,6 +46,9 @@ poetry.lock
 GEHD_v36_工业化评审报告.md
 专家建议_从Python脚本到工业级幻觉核查软件.md
 
+# WorkBuddy — AI 助手内部数据（绝不公开）
+.workbuddy/
+
 # GEHD runtime
 *.log
 cache/
