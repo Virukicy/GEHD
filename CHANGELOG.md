@@ -3,6 +3,28 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/) (SemVer 2.0)。
 
+## [0.1.2] — 2026-05-08
+
+### 修复
+- 消除魔术数字 55，新增 DEEP_SEARCH_THRESHOLD 常量（N4）
+- 删除死函数 check_whitelist()（N3）
+- 删除死常量 SCORE_ECOMMERCE_EXTRA（N5）
+- 未知阈值键触发 UserWarning（N2），顺便修复 adjective_penalty 从未从 JSON 加载的隐藏 bug
+- _apply_thresholds 中 _mapping dict → _valid_keys set（N1）
+- 测试文档版本号更新（N6）
+- 删除死 except KeyError（M4）
+- engine/__init__.py 标注 scorers 状态（M8）
+
+### 安全
+- 从 Git 中移除 .workbuddy/（AI 助手内部数据泄漏修复）
+
+### 文档
+- 新增 ARCHITECTURE.md（架构全景文档）
+- 新增 DEVELOPMENT.md（开发指南）
+- README.md 重写为专业项目首页
+
+---
+
 ## [0.1.1] — 2026-05-08
 
 ### 修复
