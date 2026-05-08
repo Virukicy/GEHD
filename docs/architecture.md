@@ -3,7 +3,7 @@
 > **版本**：v0.1.2  
 > **最后更新**：2026-05-08  
 > **目标读者**：AI 助手（Gemini/Claude/GPT/DeepSeek）或真人开发者  
-> **阅读顺序**：本文 → [development.md](./development.md) → 代码
+> **阅读顺序**：本文 → [development.md](./development.md) → [ai-guide.md](./ai-guide.md)（AI 用户）→ 代码
 
 ---
 
@@ -56,19 +56,19 @@ GEHD项目/
 │   └── gui/                    # GUI 层（预留，Iteration 3）
 │
 ├── config/                     # === 外部化配置（JSON） ===
-│   ├── whitelist.json          # L1 白名单（186 词）
-│   ├── blacklist.json          # L2 黑名单（4 词）
-│   ├── entity_patterns.json   # L3 实体提取正则（13 条）
-│   ├── l25_patterns.json      # L2.5 非实体检测正则（7 条）
-│   ├── exclude_words.json     # L3 排除词（65 词）
-│   ├── adjective_prefixes.json # L3.5 形容词前缀（21 词）
+│   ├── whitelist.json          # L1 白名单（可编辑，引擎自动加载）
+│   ├── blacklist.json          # L2 黑名单（可编辑，引擎自动加载）
+│   ├── entity_patterns.json   # L3 实体提取正则规则
+│   ├── l25_patterns.json      # L2.5 非实体检测正则规则
+│   ├── exclude_words.json     # L3 排除词
+│   ├── adjective_prefixes.json # L3.5 形容词前缀
 │   └── thresholds.json        # 评分阈值 + 文本处理参数
 │
 ├── tests/                      # === 测试 ===
 │   ├── conftest.py             # 共享 fixtures（CheckResult 类等）
-│   └── test_regression.py      # 18 个回归测试
+│   └── test_regression.py      # 回归测试套件
 │
-└── docs/                       # 文档目录（预留）
+└── docs/                       # 项目文档
 ```
 
 ---
@@ -91,12 +91,12 @@ flowchart TD
 
 | 层 | 文件 | 输入 | 输出 | 核心逻辑 |
 |------|------|------|------|------|
-| **L1** | `l1_whitelist.py` | 候选实体词 | 放行/保留 | 精确匹配 186 白名单词；子串匹配（2字前缀/3字+任意位置） |
-| **L2** | `l2_blacklist.py` | 所有文本 | issues | 扫描 4 个已知幻觉词，命中即报错 |
-| **L2.5** | `l25_nonentity.py` | 所有文本 | 候选列表 | 7 条正则检测统计金额/百分比/规模描述/权威引述/直接引语/时间线 |
-| **L3** | `l3_heuristic.py` | 所有文本 | 评分候选 | 13 条正则提取 → 白名单过滤 → 排除词过滤 → 形容词降分 → 频率加分 → 可信字符降分 → 0-100 分输出 |
+| **L1** | `l1_whitelist.py` | 候选实体词 | 放行/保留 | 精确匹配白名单词；子串匹配（2字前缀/3字+任意位置） |
+| **L2** | `l2_blacklist.py` | 所有文本 | issues | 扫描已知幻觉词，命中即报错 |
+| **L2.5** | `l25_nonentity.py` | 所有文本 | 候选列表 | 正则检测统计金额/百分比/规模描述/权威引述/直接引语/时间线 |
+| **L3** | `l3_heuristic.py` | 所有文本 | 评分候选 | 正则提取 → 白名单过滤 → 排除词过滤 → 形容词降分 → 频率加分 → 可信字符降分 → 0-100 分输出 |
 | **L3.6** | `l36_consistency.py` | L3 候选列表 | warnings | 同实体出现≥3次标记；同段落多金额共存标记 |
-| **L4** | `l4_verify.py` | L2.5+L3 候选 | JSON 文件 | 汇总候选 → 按 55 分分深度/快速搜索 → 导出 `_l4_queue.json` |
+| **L4** | `l4_verify.py` | L2.5+L3 候选 | JSON 文件 | 汇总候选 → 按深度搜索阈值分深度/快速搜索 → 导出 `_l4_queue.json` |
 
 ### 评分维度（L3 核心）
 
@@ -172,13 +172,13 @@ config/*.json（外部化）  >  engine/config.py（内置默认值）
 
 | JSON 文件 | 对应 config.py 变量 | 类型 | 用途 |
 |------|------|------|------|
-| `whitelist.json` | `WHITELIST` | `set[str]` | L1 白名单（186 词） |
-| `blacklist.json` | `BLACKLIST` | `list[str]` | L2 黑名单（4 词） |
-| `entity_patterns.json` | `ENTITY_PATTERNS` | `list[tuple]` | L3 实体提取正则（13 条） |
-| `l25_patterns.json` | `L25_PATTERNS` | `list[tuple]` | L2.5 非实体检测正则（7 条） |
-| `exclude_words.json` | `EXCLUDE_WORDS` | `set[str]` | L3 排除词（65 词） |
-| `adjective_prefixes.json` | `ADJECTIVE_PREFIXES` | `set[str]` | L3.5 形容词前缀（21 词） |
-| `thresholds.json` | 13 个 `SCORE_*` 常量 + 文本参数 | `int` | 评分阈值、窗口大小等 |
+| `whitelist.json` | `WHITELIST` | `set[str]` | L1 白名单 |
+| `blacklist.json` | `BLACKLIST` | `list[str]` | L2 黑名单 |
+| `entity_patterns.json` | `ENTITY_PATTERNS` | `list[tuple]` | L3 实体提取正则 |
+| `l25_patterns.json` | `L25_PATTERNS` | `list[tuple]` | L2.5 非实体检测正则 |
+| `exclude_words.json` | `EXCLUDE_WORDS` | `set[str]` | L3 排除词 |
+| `adjective_prefixes.json` | `ADJECTIVE_PREFIXES` | `set[str]` | L3.5 形容词前缀 |
+| `thresholds.json` | `SCORE_*` 常量 + 文本参数 | `int` | 评分阈值、窗口大小等 |
 
 ### 自定义配置
 
