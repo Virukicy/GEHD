@@ -1,8 +1,8 @@
 # GEHD — 文档幻觉核查工具
 
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/version-0.1.2-informational)](https://github.com/Virukicy/GEHD)
-[![Tests](https://img.shields.io/badge/tests-18%2F18-brightgreen)](tests/test_regression.py)
+[![Version](https://img.shields.io/badge/version-0.2.0-informational)](https://github.com/Virukicy/GEHD)
+[![Tests](https://img.shields.io/badge/tests-45%2F45-brightgreen)](tests/test_regression.py)
 
 基于**纯规则引擎**的轻量级文档幻觉核查工具。输入 `.docx` 文档，自动检测 AI 生成内容中可能被编造的专有名词、统计数据、引述和时间线。
 
@@ -28,7 +28,7 @@ python -m hallucination_checker document.docx --verify
 
 ```
 =================================================================
-  DOCX 自检报告 v0.1.2 (GEHD + L4联网核查)
+  DOCX 自检报告 v0.2.0 (GEHD + L4联网核查)
 =================================================================
   文件: report.docx
   段落: 50  |  表格: 0
@@ -42,7 +42,7 @@ python -m hallucination_checker document.docx --verify
     2. [一致性-高频实体] "辰星微电子"出现4次
     ...
 
-  --- GEHD v0.1.2 统计 ---
+  --- GEHD v0.2.0 统计 ---
   [L3] 实体候选: 16  (高危:0 中危:7 低危:9)
   [L2.5] 数据/引述候选: 4
 =================================================================
