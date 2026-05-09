@@ -93,16 +93,51 @@ class DocumentText:
 
     @classmethod
     def from_text(cls, filepath: str | Path) -> DocumentText:
-        """从纯文本文件构造。
+        """从纯文本文件构造。每行一个 TextPart。"""
+        filepath = Path(filepath)
+        with open(filepath, encoding='utf-8') as f:
+            lines = f.read().splitlines()
 
-        P2-2 实现。每行一个 TextPart，location 格式为 "L{行号}"。
-        """
-        raise NotImplementedError('P2-2 适配后实现')
+        parts = tuple(
+            TextPart(location=f'L{i + 1}', text=line)
+            for i, line in enumerate(lines)
+        )
+        return cls(parts=parts)
 
     @classmethod
     def from_markdown(cls, filepath: str | Path) -> DocumentText:
         """从 Markdown 文件构造。
 
-        P2-2 实现。标题和段落各自一个 TextPart。
+        标题 (#...) 和普通段落各自一个 TextPart。
+        空行分隔段落，连续非空行合并为一个段落。
         """
-        raise NotImplementedError('P2-2 适配后实现')
+        import re
+
+        filepath = Path(filepath)
+        with open(filepath, encoding='utf-8') as f:
+            content = f.read()
+
+        parts: list[TextPart] = []
+        loc_num = 0
+
+        for block in content.split('\n\n'):
+            block = block.strip()
+            if not block:
+                continue
+
+            loc_num += 1
+            if block.startswith('#'):
+                m = re.match(r'^(#{1,6})\s+(.+)', block)
+                if m:
+                    level = len(m.group(1))
+                    title_text = m.group(2)
+                    parts.append(TextPart(
+                        location=f'H{level}-{title_text[:20]}',
+                        text=block,
+                    ))
+                else:
+                    parts.append(TextPart(location=f'P-标题{loc_num}', text=block))
+            else:
+                parts.append(TextPart(location=f'P-段落{loc_num}', text=block))
+
+        return cls(parts=tuple(parts))
