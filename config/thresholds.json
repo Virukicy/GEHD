@@ -33,7 +33,9 @@
   },
   "l4": {
     "deep_search_threshold": 55,
-    "_deep_search_note": "≥此分的候选使用深度搜索（多引擎交叉验证），<此分使用快速搜索（单引擎判断）"
+    "_deep_search_note": "≥此分的候选使用深度搜索（多引擎交叉验证），<此分使用快速搜索（单引擎判断）",
+    "l4_search_timeout": 5.0,
+    "_timeout_note": "L4 单次搜索超时时间（秒）"
   },
   "l3_behavior": {
     "_description": "L3 评分的场景特定参数（换场景时替换这些列表即可）",

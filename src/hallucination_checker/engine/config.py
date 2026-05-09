@@ -70,6 +70,8 @@ class GEHDConfig:
     context_window_chars: int = 10
     min_candidate_length: int = 2
     deep_search_threshold: int = 55
+    l4_search_timeout: float = 5.0
+    l4_auto_verify: bool = False  # 是否在扫描时自动执行联网核查
 
     # --- L1 白名单 ---
     whitelist: frozenset[str] = field(
@@ -721,6 +723,7 @@ def _load_thresholds(filepath: Path) -> dict | None:
             'context_window_chars': 'context_window_chars',
             'min_candidate_length': 'min_candidate_length',
             'deep_search_threshold': 'deep_search_threshold',
+            'l4_search_timeout': 'l4_search_timeout',
         }
 
         # 数值阈值

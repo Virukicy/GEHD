@@ -147,9 +147,15 @@ def _gehd_check_impl(
         'l4_queue_size': 0,
     }
 
-    # L4: 验证队列
+    # L4: 验证队列 + 联网核查
     if output_verify_queue:
         l4_verify_queue = build_verify_queue(l25_ranked, l3_ranked)
+        if config.l4_auto_verify:
+            from .layers.l4_web_verify import get_verification_summary, verify_queue
+            l4_verify_queue = verify_queue(l4_verify_queue, config)
+            summary = get_verification_summary(l4_verify_queue)
+            stats['l4_verified_real'] = summary['verified_real']
+            stats['l4_verified_fake'] = summary['verified_fake']
         stats['l4_queue_size'] = len(l4_verify_queue)
 
     return issues, warnings, stats, l4_verify_queue
