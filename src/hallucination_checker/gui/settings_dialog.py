@@ -319,7 +319,7 @@ class SettingsDialog(QDialog):
         l4 = data.get('l4', {})
         self._deep_search_threshold.setValue(l4.get('deep_search_threshold', 55))
         self._l4_auto_verify.setChecked(l4.get('auto_verify', False))
-        self._l4_search_timeout.setValue(float(l4.get('search_timeout', 5.0)))
+        self._l4_search_timeout.setValue(float(l4.get('l4_search_timeout', 5.0)))
 
         text_proc = data.get('text_processing', {})
         self._context_window.setValue(text_proc.get('context_window_chars', 10))
@@ -355,7 +355,7 @@ class SettingsDialog(QDialog):
         l4 = data.setdefault('l4', {})
         l4['deep_search_threshold'] = self._deep_search_threshold.value()
         l4['auto_verify'] = self._l4_auto_verify.isChecked()
-        l4['search_timeout'] = self._l4_search_timeout.value()
+        l4['l4_search_timeout'] = self._l4_search_timeout.value()
 
         text_proc = data.setdefault('text_processing', {})
         text_proc['context_window_chars'] = self._context_window.value()

@@ -51,6 +51,7 @@ from PySide6.QtWidgets import (
 
 from hallucination_checker.engine.checker import gehd_check
 from hallucination_checker.engine.config import GEHD_VERSION, load_config
+from hallucination_checker.engine.cross_validate import gehd_cross_validate
 from hallucination_checker.gui.settings_dialog import get_config_dir
 from hallucination_checker.io.document_text import DocumentText
 
@@ -74,6 +75,11 @@ _COLOR_NEED_MANUAL_BG = QColor('#FFF8E1')          # 琥珀
 _COLOR_NEED_MANUAL_FG = QColor('#E65100')
 _COLOR_UNABLE_BG = QColor('#F5F5F5')              # 灰
 _COLOR_UNABLE_FG = QColor('#757575')
+
+# L4 交叉校验共识颜色
+_COLOR_STRONG_CONSENSUS_BG = QColor('#C8E6C9')    # 深绿
+_COLOR_WEAK_CONSENSUS_BG = QColor('#E8F5E9')      # 浅绿
+_COLOR_DIVERGENT_BG = QColor('#F5F5F5')           # 灰
 
 # L4 状态 → 中文标签
 _STATUS_LABELS: dict[str, str] = {
@@ -209,8 +215,8 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle('GEHD — 文档幻觉核查工具')
-        self.setMinimumSize(960, 660)
-        self.resize(1024, 740)
+        self.setMinimumSize(1100, 660)
+        self.resize(1160, 740)
 
         self._current_stats: dict[str, int] = {}
         self._current_issues: list[str] = []
@@ -263,6 +269,10 @@ class MainWindow(QMainWindow):
         self._browse_btn = QPushButton('浏览')
         self._browse_btn.clicked.connect(self._browse_file)
         self._verify_checkbox = QCheckBox('生成验证队列')
+        self._cross_validate_checkbox = QCheckBox('多模型交叉校验')
+        self._cross_validate_checkbox.setToolTip(
+            '三路并行检测（默认/宽松/严格），交叉比对结果'
+        )
         self._scan_btn = QPushButton('扫描')
         self._scan_btn.setMinimumWidth(72)
         self._scan_btn.clicked.connect(self._scan)
@@ -271,6 +281,7 @@ class MainWindow(QMainWindow):
         file_layout.addWidget(self._file_input, 1)
         file_layout.addWidget(self._browse_btn)
         file_layout.addWidget(self._verify_checkbox)
+        file_layout.addWidget(self._cross_validate_checkbox)
         file_layout.addWidget(self._scan_btn)
         layout.addLayout(file_layout)
 
@@ -305,6 +316,20 @@ class MainWindow(QMainWindow):
             'border: none; background: transparent; color: #C62828; font-weight: bold;'
         )
         stats_layout.addWidget(self._verified_fake_label)
+
+        # P2-5: 交叉校验共识统计
+        self._consensus_label = QLabel('')
+        self._consensus_label.setStyleSheet(
+            'border: none; background: transparent; color: #1B5E20; font-weight: bold;'
+        )
+        stats_layout.addWidget(self._consensus_label)
+
+        # P0-2: l4_auto_verify 开关状态
+        self._auto_verify_status = QLabel('')
+        self._auto_verify_status.setStyleSheet(
+            'border: none; background: transparent; color: #1565C0;'
+        )
+        stats_layout.addWidget(self._auto_verify_status)
 
         stats_layout.addStretch()
         layout.addWidget(self._stats_frame)
@@ -405,9 +430,14 @@ class MainWindow(QMainWindow):
         try:
             config = load_config()
             text = DocumentText.from_docx(path)
-            issues, warnings, stats, l4_queue = gehd_check(
-                text, config, output_verify_queue=output_l4
-            )
+            if self._cross_validate_checkbox.isChecked():
+                issues, warnings, stats, l4_queue = gehd_cross_validate(
+                    text, output_verify_queue=output_l4
+                )
+            else:
+                issues, warnings, stats, l4_queue = gehd_check(
+                    text, config, output_verify_queue=output_l4
+                )
         except (FileNotFoundError, ValueError, OSError, json.JSONDecodeError) as e:
             self._scan_btn.setEnabled(True)
             self._scan_btn.setText('扫描')
@@ -444,6 +474,14 @@ class MainWindow(QMainWindow):
             'low_risk':           f'低危: {stats.get("low_risk", 0)}',
             'l4_queue_size':      f'L4队列: {stats.get("l4_queue_size", 0)}',
         }
+        # P2-5: 交叉校验时使用合并统计
+        if stats.get('cross_validate_mode'):
+            mapping['total_candidates'] = f'合并问题: {stats.get("merged_issues", 0)}'
+            mapping['high_risk'] = f'A/B/C: {stats.get("A_issues", 0)}/{stats.get("B_issues", 0)}/{stats.get("C_issues", 0)}'
+            mapping['medium_risk'] = f'A/B/C警告: {stats.get("A_warnings", 0)}/{stats.get("B_warnings", 0)}/{stats.get("C_warnings", 0)}'
+            mapping['low_risk'] = ''
+            mapping['l25_candidates'] = ''
+
         for key, label in self._stat_labels.items():
             label.setText(mapping.get(key, '—'))
 
@@ -458,6 +496,21 @@ class MainWindow(QMainWindow):
             self._verified_fake_label.setText(
                 f'已验证假: {vf}' if vf > 0 else ''
             )
+
+        # P2-5: 共识统计
+        strong = stats.get('cross_high_consensus', 0)
+        if strong > 0:
+            self._consensus_label.setText(f'强共识: {strong}')
+        else:
+            self._consensus_label.setText('')
+
+        # P0-2: l4_auto_verify 状态
+        cfg = self._current_config
+        if cfg and getattr(cfg, 'l4_auto_verify', False):
+            timeout = getattr(cfg, 'l4_search_timeout', 5.0)
+            self._auto_verify_status.setText(f'联网核查: 已启用 ({timeout}s)')
+        else:
+            self._auto_verify_status.setText('联网核查: 已关闭')
 
     # ---- 结果刷新 ----
 
@@ -512,13 +565,23 @@ class MainWindow(QMainWindow):
 
             # P2-3: 按验证状态着色（优先于分数阈值着色）
             status_colors = self._get_status_colors(status)
+            # P2-5: 交叉校验共识级别
+            xv = entry.get('cross_validation', {})
+            consensus = xv.get('consensus_level', '')
+            consensus_colors = self._get_consensus_colors(consensus)
+
             if status_colors:
                 for col in range(5):
                     cell = self._l4_table.item(row, col)
                     if cell:
                         cell.setBackground(status_colors[0])
-                        if col == 3:  # 状态列用对应前景色
+                        if col == 3:
                             cell.setForeground(status_colors[1])
+            elif consensus_colors:
+                for col in range(5):
+                    cell = self._l4_table.item(row, col)
+                    if cell:
+                        cell.setBackground(consensus_colors[0])
             elif score >= high_th:
                 for col in range(5):
                     cell = self._l4_table.item(row, col)
@@ -548,6 +611,17 @@ class MainWindow(QMainWindow):
             return (_COLOR_NEED_MANUAL_BG, _COLOR_NEED_MANUAL_FG)
         if status == 'unable_to_verify':
             return (_COLOR_UNABLE_BG, _COLOR_UNABLE_FG)
+        return None
+
+    @staticmethod
+    def _get_consensus_colors(level: str) -> tuple[QColor, QColor] | None:
+        """返回 (bg, fg) 或 None。"""
+        if level == 'strong':
+            return (_COLOR_STRONG_CONSENSUS_BG, QColor('#1B5E20'))
+        if level == 'weak':
+            return (_COLOR_WEAK_CONSENSUS_BG, QColor('#33691E'))
+        if level == 'divergent':
+            return (_COLOR_DIVERGENT_BG, QColor('#757575'))
         return None
 
     # ---- L4 行双击 → evidence 详情 ----
@@ -730,7 +804,9 @@ class MainWindow(QMainWindow):
     # ---- 设置窗口 ----
 
     def _open_settings(self) -> None:
-        if hasattr(self, '_settings_dialog') and self._settings_dialog.isVisible():
+        if (hasattr(self, '_settings_dialog')
+                and self._settings_dialog is not None
+                and self._settings_dialog.isVisible()):
             self._settings_dialog.raise_()
             self._settings_dialog.activateWindow()
             return
