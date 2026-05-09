@@ -1,6 +1,6 @@
 # GEHD 开发指南
 
-> **版本**：v0.2.0  
+> **版本**：v0.3.0-alpha  
 > **最后更新**：2026-05-09  
 > **前置阅读**：先读 [architecture.md](./architecture.md) 了解项目结构
 
@@ -20,12 +20,8 @@
 git clone https://github.com/Virukicy/GEHD.git
 cd GEHD
 
-# 2. 安装依赖（方式一：pip）
+# 2. 安装依赖
 pip install -e .
-
-# 2. 安装依赖（方式二：Poetry，推荐）
-# pip install poetry
-# poetry install
 
 # 3. 运行
 python -m hallucination_checker path/to/document.docx
@@ -48,8 +44,11 @@ pip install -e ".[dev]"   # 含 pytest、mypy、ruff
 
 ```python
 from hallucination_checker.engine.checker import gehd_check
+from hallucination_checker.engine.config import load_config
 
-issues, warnings, stats, l4_queue = gehd_check(doc, output_verify_queue=True)
+config = load_config()
+text = DocumentText.from_docx('path/to/document.docx')
+issues, warnings, stats, l4_queue = gehd_check(text, config, output_verify_queue=True)
 ```
 
 - `issues: list[str]` — 高危问题（≥65 分）
@@ -99,49 +98,27 @@ python -m hallucination_checker document.docx --verify
 ### 运行测试
 
 ```bash
-# 全量回归测试
-pytest tests/test_regression.py -v
+# 全量测试
+pytest tests/ -v
 
-# 预期：18 passed
+# 预期：76 passed
 ```
 
 **注意**：测试依赖 `GEHD_RedTeam_v2_Document.docx`，路径见 `tests/conftest.py`。
 
-### 测试覆盖范围
+### 测试覆盖范围（v0.3.0-alpha）
 
-| 测试类 | 测试数 | 覆盖层 |
-|------|------|------|
-| `TestL2Blacklist` | 2 | L2 黑名单 |
-| `TestL1Whitelist` | 2 | L1 白名单 |
-| `TestL3EntityDetection` | 3 | L3 实体检测 + 评分 |
-| `TestL25NonEntityDetection` | 2 | L2.5 非实体检测 |
-| `TestL36ConsistencyCheck` | 1 | L3.6 一致性 |
-| `TestL4QueueOutput` | 3 | L4 队列协议 |
-| `TestV36QuoteTighteningRegression` | 1 | 引语收紧回归 |
-| `TestL4ProtocolStructure` | 1 | L4 JSON 协议完整性 |
-| `TestEdgeCases` | 3 | 边界条件 |
+测试套件已扩展至 76 个测试，覆盖所有层和 IO 入口：
 
-### 测试升级路线（P1-5 详细计划）
-
-**当前问题**：18 个测试全是回归测试（依赖外部 docx 文件），无独立单元测试，覆盖率约 30%。
-
-**阶段 A — Iteration 2 内完成**：新增 ~30 个纯函数单元测试
-
-| 测试类 | 内容 | 新增数量 |
-|------|------|------|
-| `TestL1WhitelistUnit` | 白名单精确匹配、子串匹配（2字/3字+）、剩余长度判定 | ~8 |
-| `TestL2BlacklistUnit` | 黑名单命中/未命中/部分匹配 | ~4 |
-| `TestL3ScoringUnit` | 评分各维度独立验证（基础分/形容词降分/频率加分/可信字符降分） | ~10 |
-| `TestL36ConsistencyUnit` | 高频检测阈值、金额矛盾单/多段落 | ~4 |
-| `TestConfigLoading` | JSON 加载正确性、回退默认值、未知 key 警告 | ~5 |
-
-注：阶段 A 的测试不依赖外部 docx 文件，全部基于构造的字符串输入。
-
-**阶段 B — Iteration 3 前完成**：
-
-- 构造对抗样本 docx（白名单子串绕过、中英文混合、超长文本）
-- 边界输入测试（空文档、纯数字、纯英文）
-- 性能基准测试（500+ 段落大文档耗时）
+| 测试文件/目录 | 覆盖层 |
+|------|------|
+| `tests/test_regression.py` | L1-L4 回归测试 |
+| `tests/test_unit.py` | L1-L4 各层单元测试 |
+| `tests/test_declaration.py` | L3.7 声明提取 |
+| `tests/test_io_factories.py` | IO 工厂方法 |
+| `tests/test_gui.py` | GUI 组件 |
+| `tests/test_layers/` | 分层独立测试 |
+| `tests/test_io/` | IO 层独立测试 |
 
 ---
 
@@ -155,14 +132,16 @@ engine/layers/l2_blacklist.py   — L2 层：黑名单拦截
 engine/layers/l25_nonentity.py  — L2.5 层：非实体幻觉
 engine/layers/l3_heuristic.py   — L3 层：启发式评分
 engine/layers/l36_consistency.py — L3.6 层：一致性检查
+engine/layers/l37_declaration.py — L3.7 层：声明提取
 engine/layers/l4_verify.py      — L4 层：验证队列
 ```
 
-### 类型注解（进行中）
+### 类型注解（已完成，v0.2.0）
 
 - 引擎层（`engine/layers/`）：**有**完整类型注解
-- IO 层（`io/`）：**部分**有——返回类型有，参数 `doc` 缺（P1-1 待修）
+- IO 层（`io/`）：**有**完整类型注解（P1-1 已修复）
 - CLI 层：**有**完整类型注解
+- mypy 22 文件零错误
 
 ### 不允许的做法
 
@@ -276,8 +255,10 @@ main 分支：稳定版本（当前）
 
 ```bash
 # 开发流程
+git pull
 git add -A
 git commit -m "描述你的改动"
+git pull --rebase
 git push
 ```
 

@@ -2,7 +2,7 @@
 
 > **版本**: frozen-1  
 > **日期**: 2026-05-09  
-> **状态**: UI 组已确认，引擎组已冻结  
+> **状态**: U 已确认，E 已冻结  
 > **对应代码**: `src/hallucination_checker/io/document_text.py`
 
 ---
@@ -37,8 +37,8 @@
 | 方法 | 状态 | 说明 |
 |------|------|------|
 | `DocumentText.from_docx(path)` | ✅ 已实现 | 从 .docx 文件构造 |
-| `DocumentText.from_text(path)` | ⏳ P2-2 | 从纯文本文件构造 |
-| `DocumentText.from_markdown(path)` | ⏳ P2-2 | 从 Markdown 文件构造 |
+| `DocumentText.from_text(path)` | ✅ 已实现 | 从纯文本文件构造 |
+| `DocumentText.from_markdown(path)` | ✅ 已实现 | 从 Markdown 文件构造 |
 | `DocumentText(parts=[...])` | ✅ | 直接从 TextPart 列表构造 |
 
 ---
@@ -113,11 +113,11 @@ cli/main.py
 
 ---
 
-## 八、UI 组最小可用交付（已推送）
+## 八、U 最小可用交付（已推送）
 
 `DocumentText` + `from_docx()` 已推送到 main 分支。
 
-UI 组现在可写：
+U 现在可写：
 
 ```python
 from hallucination_checker.io.document_text import DocumentText, TextPart
@@ -138,6 +138,6 @@ issues, warnings, stats, l4_queue = gehd_check(text, config)
 | 日期 | 变更 |
 |------|------|
 | 2026-05-09 | 初版冻结（frozen-1） |
-| 2026-05-09 | UI 组三点确认：display 字段、输出稳定、最小交付 |
+| 2026-05-09 | U 三点确认：display 字段、输出稳定、最小交付 |
 | 2026-05-09 | gehd_check() 主入口切换到 DocumentText |
 | 2026-05-09 | N8 修复：DocumentText 加 frozen=True，parts list→tuple |

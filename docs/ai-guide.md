@@ -2,7 +2,7 @@
 
 > **目标读者**：任何 AI 助手（Gemini/Claude/GPT/DeepSeek 等），需要操作 GEHD 进行文档幻觉核查  
 > **前置阅读**：先读 [architecture.md](./architecture.md) 了解 GEHD 是什么  
-> **最后更新**：2026-05-08
+> **最后更新**：2026-05-09
 
 ---
 
@@ -187,7 +187,7 @@ python -m hallucination_checker report.docx --verify
 ### 验证 JSON 格式
 
 ```bash
-python3 -c "import json; json.load(open('config/whitelist.json'))" && echo "OK"
+python -c "import json; json.load(open('config/whitelist.json'))" && echo "OK"
 ```
 
 ### 不要改的文件

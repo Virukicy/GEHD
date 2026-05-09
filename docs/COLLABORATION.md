@@ -1,6 +1,6 @@
 # GEHD 多智能体协作协议
 
-> **参与方**: 引擎组 / UI 组 / QA 组 / 文档组 / PM  
+> **参与方**: E / U / QA / D / PM  
 > **仓库**: `https://github.com/Virukicy/GEHD`（Private）  
 > **本地路径**: `~/Desktop/GEHD项目/`  
 > **分支策略**: Trunk-Based（单 `main` 分支）  
@@ -12,10 +12,10 @@
 
 | 团队 | 简称 | 角色 | 源文件域 |
 |------|------|------|------|
-| 引擎组 | ENG | 核心引擎开发、版本管理、CHANGELOG | `engine/` `io/` `cli/` `config/` `tests/`（引擎测试） `CHANGELOG.md` |
-| UI 组 | UI | 桌面 GUI 应用开发 | `gui/` `tests/test_gui.py` |
-| QA 组 | QA | 独立质量保障：代码审查、哨卡检查、合规扫描 | **无**（只读全部源文件，仅写 `.workbuddy/`） |
-| 文档组 | DOC | 文档维护 | `docs/` `README.md` |
+| E | E | 核心引擎开发、版本管理、CHANGELOG | `engine/` `io/` `cli/` `config/` `tests/`（引擎测试） `CHANGELOG.md` |
+| U | U | 桌面 GUI 应用开发 | `gui/` `tests/test_gui.py` |
+| QA | QA | 独立质量保障：代码审查、哨卡检查、合规扫描 | **无**（只读全部源文件，仅写 `.workbuddy/`） |
+| D | D | 文档维护 | `docs/` `README.md` |
 | PM | PM | 战略方向、场景审计、团队协调 | **无**（仅写 `.workbuddy/`） |
 
 ---
@@ -24,35 +24,35 @@
 
 ```
 src/hallucination_checker/
-├── engine/              ← 🔵 引擎组独占
-├── gui/                 ← 🟠 UI 组独占
+├── engine/              ← 🔵 E 独占
+├── gui/                 ← 🟠 U 独占
 ├── io/
-│   ├── document_text.py ← 🔒 冻结共享（改之前必须引擎+UI双方同意）
-│   ├── docx_reader.py   ← 🔵 引擎组
-│   ├── format_checks.py ← 🔵 引擎组
-│   └── reporter.py      ← 🔵 引擎组
-├── cli/                 ← 🔵 引擎组
-├── __init__.py          ← 🔵 引擎组
-├── __main__.py          ← 🔵 引擎组
-└── logging_setup.py     ← 🔵 引擎组
+│   ├── document_text.py ← 🔒 冻结共享（改之前必须 E+U 双方同意）
+│   ├── docx_reader.py   ← 🔵 E
+│   ├── format_checks.py ← 🔵 E
+│   └── reporter.py      ← 🔵 E
+├── cli/                 ← 🔵 E
+├── __init__.py          ← 🔵 E
+├── __main__.py          ← 🔵 E
+└── logging_setup.py     ← 🔵 E
 
-config/                  ← 🔵 引擎组（UI 只读）
+config/                  ← 🔵 E（U 只读）
 tests/
-├── test_regression.py   ← 🔵 引擎组
-├── test_unit.py         ← 🔵 引擎组
-├── test_declaration.py  ← 🔵 引擎组
-├── test_io_factories.py ← 🔵 引擎组
-├── test_gui.py          ← 🟠 UI 组
-└── conftest.py          ← 🔵 引擎组（改之前喊话）
+├── test_regression.py   ← 🔵 E
+├── test_unit.py         ← 🔵 E
+├── test_declaration.py  ← 🔵 E
+├── test_io_factories.py ← 🔵 E
+├── test_gui.py          ← 🟠 U
+└── conftest.py          ← 🔵 E（改之前喊话）
 
-docs/                    ← 📗 文档组独占
-README.md                ← 📗 文档组独占
-CHANGELOG.md             ← 🔵 引擎组自行维护
-pyproject.toml           ← 🔵 引擎组（版本号等）
+docs/                    ← 📗 D 独占
+README.md                ← 📗 D 独占
+CHANGELOG.md             ← 🔵 E 自行维护
+pyproject.toml           ← 🔵 E（版本号等）
 
-🟢 QA 组: 只读全部源文件，仅写 .workbuddy/ 传递文档
-🟢 PM:   仅写 .workbuddy/ 传递文档
-📗 DOC:  docs/ + README + CHANGELOG，仅改文档
+🟢 QA: 只读全部源文件，仅写 .workbuddy/ 传递文档
+🟢 PM: 仅写 .workbuddy/ 传递文档
+📗 D:  docs/ + README.md，仅改文档
 ```
 
 ---
@@ -68,7 +68,7 @@ pyproject.toml           ← 🔵 引擎组（版本号等）
 
 ## 四、标准工作流
 
-### 引擎组 / UI 组开工
+### E / U 开工
 
 ```bash
 git pull
@@ -81,7 +81,7 @@ git push
 
 ### 提交后 QA 哨卡
 
-QA 组每次提交后自动执行：
+QA 每次提交后自动执行：
 
 ```
 pytest                    ← 全量测试是否通过？
@@ -90,7 +90,7 @@ ruff check src/          ← 有无新增 lint 问题？
 git diff --stat          ← 是否踩到其他组的文件域？
 ```
 
-**通过** → QA 产出简短确认。**不通过** → QA 产出 `Q2E-YYYYMMDD-NNN`（引擎）或 `Q2U-YYYYMMDD-NNN`（UI），列明问题。
+**通过** → QA 产出简短确认。**不通过** → QA 产出 `Q2E-YYYYMMDD-NNN`（E）或 `Q2U-YYYYMMDD-NNN`（U），列明问题。
 
 ### `--rebase` 说明
 
@@ -117,7 +117,7 @@ git diff --stat          ← 是否踩到其他组的文件域？
 
 ## 六、全责清单
 
-| 职责 | 引擎组 | UI 组 | QA 组 | 文档组 | PM |
+| 职责 | E | U | QA | D | PM |
 |------|------|------|------|------|------|
 | 引擎核心代码 | ✅ | ❌ | ❌ | ❌ | ❌ |
 | GUI 界面代码 | ❌ | ✅ | ❌ | ❌ | ❌ |
@@ -138,13 +138,14 @@ git diff --stat          ← 是否踩到其他组的文件域？
 
 ## 七、通讯协议
 
-四方智能体不能直接对话。通讯方式：**用户在对话中转发**。
+五方智能体不能直接对话。通讯方式：**用户在对话中转发**。
 
 ```
-引擎组 → 用户 → UI 组 / QA 组 / PM
-UI 组  → 用户 → 引擎组 / QA 组 / PM
-QA 组  → 用户 → 引擎组 / UI 组
-PM     → 用户 → 引擎组 / UI 组 / QA 组
+E  → 用户 → U / QA / PM
+U  → 用户 → E / QA / PM
+QA → 用户 → E / U
+D  → 用户 → E / U / QA / 全体
+PM → 用户 → E / U / QA / D
 ```
 
 ### 传递文档规范
@@ -153,22 +154,24 @@ PM     → 用户 → 引擎组 / UI 组 / QA 组
 
 | 方向 | 前缀 | 位置 | 示例 |
 |------|------|------|------|
-| 引擎→UI | `E2U-YYYYMMDD-NNN` | `~/.workbuddy/` | `E2U-20260509-001.md` |
-| UI→引擎 | `U2E-YYYYMMDD-NNN` | `.workbuddy/` | `U2E-20260509-001.md` |
-| QA→引擎 | `Q2E-YYYYMMDD-NNN` | `.workbuddy/` | `Q2E-20260509-001.md` |
-| QA→UI | `Q2U-YYYYMMDD-NNN` | `.workbuddy/` | `Q2U-20260509-001.md` |
+| E→U | `E2U-YYYYMMDD-NNN` | `.workbuddy/` | `E2U-20260509-001.md` |
+| U→E | `U2E-YYYYMMDD-NNN` | `.workbuddy/` | `U2E-20260509-001.md` |
+| E→PM | `E2PM-YYYYMMDD-NNN` | `.workbuddy/` | `E2PM-20260509-001.md` |
+| E→D | `E2D-YYYYMMDD-NNN` | `.workbuddy/` | `E2D-20260509-001.md` |
+| QA→E | `Q2E-YYYYMMDD-NNN` | `.workbuddy/` | `Q2E-20260509-001.md` |
+| QA→U | `Q2U-YYYYMMDD-NNN` | `.workbuddy/` | `Q2U-20260509-001.md` |
 | QA→全体 | `Q2A-YYYYMMDD-NNN` | `.workbuddy/` | `Q2A-20260509-001.md` |
-| 文档组→引擎 | `D2E-YYYYMMDD-NNN` | `.workbuddy/` | `D2E-20260509-001.md` |
-| 文档组→UI | `D2U-YYYYMMDD-NNN` | `.workbuddy/` | `D2U-20260509-001.md` |
-| 文档组→QA | `D2Q-YYYYMMDD-NNN` | `.workbuddy/` | `D2Q-20260509-001.md` |
-| 文档组→全体 | `D2A-YYYYMMDD-NNN` | `.workbuddy/` | `D2A-20260509-001.md` |
-| PM→引擎 | `PM2E-YYYYMMDD-NNN` | `.workbuddy/` | `PM2E-20260509-001.md` |
-| PM→UI | `PM2U-YYYYMMDD-NNN` | `.workbuddy/` | `PM2U-20260509-001.md` |
+| D→E | `D2E-YYYYMMDD-NNN` | `.workbuddy/` | `D2E-20260509-001.md` |
+| D→U | `D2U-YYYYMMDD-NNN` | `.workbuddy/` | `D2U-20260509-001.md` |
+| D→QA | `D2Q-YYYYMMDD-NNN` | `.workbuddy/` | `D2Q-20260509-001.md` |
+| D→全体 | `D2A-YYYYMMDD-NNN` | `.workbuddy/` | `D2A-20260509-001.md` |
+| PM→E | `PM2E-YYYYMMDD-NNN` | `.workbuddy/` | `PM2E-20260509-001.md` |
+| PM→U | `PM2U-YYYYMMDD-NNN` | `.workbuddy/` | `PM2U-20260509-001.md` |
 | PM→QA | `PM2Q-YYYYMMDD-NNN` | `.workbuddy/` | `PM2Q-20260509-001.md` |
-| PM→文档组 | `PM2D-YYYYMMDD-NNN` | `.workbuddy/` | `PM2D-20260509-001.md` |
+| PM→D | `PM2D-YYYYMMDD-NNN` | `.workbuddy/` | `PM2D-20260509-001.md` |
 
 **规则**：
-- 引擎组的传出传递写入 `~/.workbuddy/`，其他所有团队的传递写入项目的 `.workbuddy/`
+- 所有团队的传递统一写入项目 `.workbuddy/`
 - 每次传递**新建文件**，不复用旧文件名
 - 序号 NNN 按当天同方向递增
 - 回复时在正文注明 `回复 {原传递号}`

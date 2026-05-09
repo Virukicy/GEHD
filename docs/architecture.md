@@ -11,7 +11,7 @@
 
 **GEHD**（Generalized Entity Hallucination Detection）是一个**纯规则引擎**的文档幻觉核查工具。
 
-输入一份 `.docx` 文档，GEHD 用五层规则引擎扫描其中的专有名词、统计数据、引述和时间线，标记出"可能被 AI 编造"的内容——即幻觉（hallucination）。
+输入一份 `.docx` 文档，GEHD 用六层规则引擎扫描其中的专有名词、统计数据、引述和时间线，标记出"可能被 AI 编造"的内容——即幻觉（hallucination）。
 
 **核心差异化优势**：GEHD 不使用 LLM 自查（LLM 自查有"自己检查自己"的致命缺陷），而是用纯正则 + 启发式规则，结果可审计、可解释。
 
@@ -24,8 +24,8 @@ GEHD项目/
 ├── pyproject.toml              # 项目元数据、依赖声明、工具配置
 ├── README.md                   # 项目首页
 ├── CHANGELOG.md                # 版本变更记录
-├── ARCHITECTURE.md             # ← 你正在读的文件
-├── DEVELOPMENT.md              # 开发指南
+├── architecture.md               # ← 你正在读的文件
+├── development.md                # 开发指南
 │
 ├── src/hallucination_checker/  # === 源代码（src-layout） ===
 │   ├── __init__.py             # 包入口，定义 __version__
@@ -36,16 +36,18 @@ GEHD项目/
 │   │   ├── checker.py          # 主编排器：组合 L1→L4 全流程
 │   │   ├── extractors/
 │   │   │   └── text_extractor.py  # 从 docx 提取结构化文本块
-│   │   ├── layers/             # === 五层规则引擎 ===
+│   │   ├── layers/             # === 六层规则引擎 ===
 │   │   │   ├── l1_whitelist.py     # L1: 白名单放行
 │   │   │   ├── l2_blacklist.py     # L2: 黑名单拦截
 │   │   │   ├── l25_nonentity.py    # L2.5: 非实体幻觉检测
 │   │   │   ├── l3_heuristic.py     # L3: 启发式评分（核心）
 │   │   │   ├── l36_consistency.py  # L3.6: 内部一致性检查
+│   │   │   ├── l37_declaration.py  # L3.7: 声明性构造检测
 │   │   │   └── l4_verify.py        # L4: 验证队列构建
 │   │   └── scorers/            # 评分逻辑（预留，当前在 l3_heuristic.py）
 │   │
 │   ├── io/                     # === 输入输出层 ===
+│   │   ├── document_text.py    # 格式无关的文档中间表示（DocumentText）
 │   │   ├── docx_reader.py      # 文档加载 + 异常处理
 │   │   ├── format_checks.py    # Check 1-5: 基础格式检查
 │   │   └── reporter.py         # 报告格式化输出
@@ -53,27 +55,34 @@ GEHD项目/
 │   ├── cli/                    # === 命令行入口（薄层） ===
 │   │   └── main.py             # 参数解析 + 流程编排
 │   │
-│   └── gui/                    # GUI 层（预留，Iteration 3）
+│   └── gui/                    # GUI 层（PySide6 桌面应用）
 │
 ├── config/                     # === 外部化配置（JSON） ===
 │   ├── whitelist.json          # L1 白名单（可编辑，引擎自动加载）
 │   ├── blacklist.json          # L2 黑名单（可编辑，引擎自动加载）
 │   ├── entity_patterns.json   # L3 实体提取正则规则
 │   ├── l25_patterns.json      # L2.5 非实体检测正则规则
+│   ├── declaration_patterns.json # L3.7 声明性构造检测正则规则
 │   ├── exclude_words.json     # L3 排除词
 │   ├── adjective_prefixes.json # L3.5 形容词前缀
 │   └── thresholds.json        # 评分阈值 + 文本处理参数
 │
 ├── tests/                      # === 测试 ===
 │   ├── conftest.py             # 共享 fixtures（CheckResult 类等）
-│   └── test_regression.py      # 回归测试套件
+│   ├── test_regression.py      # 回归测试套件
+│   ├── test_unit.py            # 单元测试（L1-L4 各层）
+│   ├── test_declaration.py     # L3.7 声明提取测试
+│   ├── test_io_factories.py    # IO 工厂方法测试
+│   ├── test_gui.py             # GUI 测试
+│   ├── test_layers/            # 分层测试
+│   └── test_io/                # IO 层测试
 │
 └── docs/                       # 项目文档
 ```
 
 ---
 
-## 三、五层引擎数据流
+## 三、六层引擎数据流
 
 ```mermaid
 flowchart TD
@@ -83,7 +92,8 @@ flowchart TD
     L2 --> L25["🟡 L2.5 非实体检测<br/>统计金额/引述/时间线"]
     L25 --> L3["🟠 L3 启发式评分<br/>正则提取 + 多维打分"]
     L3 --> L36["🟣 L3.6 一致性检查<br/>高频实体/金额矛盾"]
-    L36 --> L4["🟢 L4 验证队列<br/>生成待联网核查 JSON"]
+    L36 --> L37["🟤 L3.7 声明提取<br/>6类声明性构造检测"]
+    L37 --> L4["🟢 L4 验证队列<br/>生成待联网核查 JSON"]
     L4 --> OUTPUT["📊 报告输出<br/>issues + warnings + stats"]
 ```
 
@@ -96,6 +106,7 @@ flowchart TD
 | **L2.5** | `l25_nonentity.py` | 所有文本 | 候选列表 | 正则检测统计金额/百分比/规模描述/权威引述/直接引语/时间线 |
 | **L3** | `l3_heuristic.py` | 所有文本 | 评分候选 | 正则提取 → 白名单过滤 → 排除词过滤 → 形容词降分 → 频率加分 → 可信字符降分 → 0-100 分输出 |
 | **L3.6** | `l36_consistency.py` | L3 候选列表 | warnings | 同实体出现≥3次标记；同段落多金额共存标记 |
+| **L3.7** | `l37_declaration.py` | 所有文本 | issues | 6类声明性构造检测（语义声明、断言、因果、量化、对比、条件） |
 | **L4** | `l4_verify.py` | L2.5+L3 候选 | JSON 文件 | 汇总候选 → 按深度搜索阈值分深度/快速搜索 → 导出 `_l4_queue.json` |
 
 ### 评分维度（L3 核心）
@@ -140,6 +151,7 @@ flowchart LR
             L25["l25_nonentity"]
             L3["l3_heuristic"]
             L36["l36_consistency"]
+            L37["l37_declaration"]
             L4["l4_verify"]
         end
     end
@@ -175,6 +187,7 @@ config/*.json（外部化）  >  engine/config.py（内置默认值）
 | `whitelist.json` | `WHITELIST` | `set[str]` | L1 白名单 |
 | `blacklist.json` | `BLACKLIST` | `list[str]` | L2 黑名单 |
 | `entity_patterns.json` | `ENTITY_PATTERNS` | `list[tuple]` | L3 实体提取正则 |
+| `declaration_patterns.json` | `DECLARATION_PATTERNS` | `list[tuple]` | L3.7 声明性构造检测正则 |
 | `l25_patterns.json` | `L25_PATTERNS` | `list[tuple]` | L2.5 非实体检测正则 |
 | `exclude_words.json` | `EXCLUDE_WORDS` | `set[str]` | L3 排除词 |
 | `adjective_prefixes.json` | `ADJECTIVE_PREFIXES` | `set[str]` | L3.5 形容词前缀 |
@@ -196,12 +209,16 @@ config/*.json（外部化）  >  engine/config.py（内置默认值）
 
 | 文件 | 用途 | 测试数 |
 |------|------|------|
-| `tests/conftest.py` | `CheckResult` 类封装 `check_docx()` 输出解析 | — |
 | `tests/test_regression.py` | 核心回归测试，覆盖 L1-L4 + 边界条件 | 18 |
+| `tests/test_unit.py` | 单元测试（L1-L4 各层独立验证） | 27 |
+| `tests/test_declaration.py` | L3.7 声明提取专项测试 | 5 |
+| `tests/test_io_factories.py` | IO 工厂方法测试 | 若干 |
+| `tests/test_gui.py` | GUI 组件测试 | 若干 |
+| `tests/test_layers/` | 分层独立测试 | 若干 |
+| `tests/test_io/` | IO 层独立测试 | 若干 |
+| **合计** | | **76** |
 
-**运行**：`pytest tests/test_regression.py -v`（需要 `GEHD_RedTeam_v2_Document.docx` 测试文件）
-
-**测试数据路径**：`~/Desktop/WorkBuddy/GEHD_Test_Suite/v2/GEHD_RedTeam_v2_Document.docx`
+**运行**：`pytest tests/ -v`
 
 ---
 
@@ -209,7 +226,7 @@ config/*.json（外部化）  >  engine/config.py（内置默认值）
 
 | 版本 | 日期 | 关键变更 |
 |------|------|------|
-| **v0.3.0-alpha** | 2026-05-09 | P2-1 声明提取 + P2-2 适配层 + 配置外置化扫尾 + 四方协作 |
+| **v0.3.0-alpha** | 2026-05-09 | P2-1 声明提取 + P2-2 适配层 + 配置外置化扫尾 + 五方协作 |
 | **v0.2.0** | 2026-05-09 | Iteration 2 完成：类型安全+代码质量+日志+测试覆盖率 85% |
 | **v0.1.2** | 2026-05-08 | 代码质量补丁：消除魔术数字 55、删除死代码、配置漂移修复 |
 | **v0.1.1** | 2026-05-08 | 代码质量补丁：测试修复、版本统一、globals() 重构 |
