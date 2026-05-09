@@ -52,11 +52,16 @@ def extract_and_score(
 
                 # 评分
                 score = score_base
+                l35_penalty = 0
+                platform_bonus = 0
+                freq_bonus = 0
+                plaus_penalty = 0
 
                 # L3.5: 形容词前缀降分
                 for adj in config.adjective_prefixes:
                     if word.startswith(adj):
-                        score = max(5, score - config.score_l35_penalty)
+                        l35_penalty = -config.score_l35_penalty
+                        score = max(5, score + l35_penalty)
                         break
 
                 # 单字平台加分（后缀列表来自 config）
@@ -64,32 +69,43 @@ def extract_and_score(
                     re.match(rf'^[\u4e00-\u9fff]{{1}}(?:{re.escape(s)})', word)
                     for s in config.single_char_platform_suffixes
                 ):
-                    score += config.score_single_char_platform
+                    platform_bonus = config.score_single_char_platform
+                    score += platform_bonus
 
                 # 频率信号
                 count = full_text.count(word)
                 if count >= 3:
-                    score += config.score_high_freq_bonus
+                    freq_bonus = config.score_high_freq_bonus
+                    score += freq_bonus
                 elif count >= 2:
-                    score += config.score_med_freq_bonus
+                    freq_bonus = config.score_med_freq_bonus
+                    score += freq_bonus
 
                 # 可信字符降分（字符列表和生效类别来自 config）
                 plausible_chars = any(
                     c in word for c in config.plausible_chars
                 )
                 if plausible_chars and category in config.plausible_char_categories:
-                    score += config.score_plausible_char_penalty
+                    plaus_penalty = config.score_plausible_char_penalty
+                    score += plaus_penalty
 
-                score = max(config.score_minimum, score)
+                final_score = max(config.score_minimum, score)
 
                 cw = config.context_window_chars
                 candidates.append(
                     {
                         'word': word,
                         'category': category,
-                        'score': score,
+                        'score': final_score,
                         'location': loc,
                         'context': text[max(0, m.start() - cw) : m.end() + cw],
+                        '_scoring': {
+                            'base': score_base,
+                            'l35_penalty': l35_penalty,
+                            'platform_bonus': platform_bonus,
+                            'freq_bonus': freq_bonus,
+                            'plausible_penalty': plaus_penalty,
+                        },
                     }
                 )
 

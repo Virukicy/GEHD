@@ -158,4 +158,74 @@ def _gehd_check_impl(
             stats['l4_verified_fake'] = summary['verified_fake']
         stats['l4_queue_size'] = len(l4_verify_queue)
 
+        # P2-4: 证据链生成
+        _build_evidence_chain(
+            l4_verify_queue, l3_candidates, consistency_issues
+        )
+
     return issues, warnings, stats, l4_verify_queue
+
+
+def _build_evidence_chain(
+    l4_queue: list[dict],
+    l3_candidates: list[dict],
+    consistency_issues: list[dict],
+) -> None:
+    """为 L4 队列中的每个 entity 构建证据链（原地追加 evidence 字段）。
+
+    证据链四段：scoring / consistency / verification / recommendation。
+    """
+    # 构建 L3 candidate 索引：word → _scoring
+    scoring_index: dict[str, dict] = {}
+    for cand in l3_candidates:
+        if '_scoring' in cand:
+            scoring_index.setdefault(cand['word'], cand['_scoring'])
+
+    # 构建 L3.6 一致性索引：word → issue
+    consistency_index: dict[str, dict] = {}
+    for ci in consistency_issues:
+        w = ci.get('word', '')
+        if w:
+            consistency_index[w] = ci
+
+    for entity in l4_queue:
+        word = entity.get('word', '')
+        scoring = scoring_index.get(word, {})
+
+        verify_status = entity.get('status', 'pending')
+        verify_result = entity.get('search_result', {})
+        verify_conf = verify_result.get('confidence', 0) if isinstance(verify_result, dict) else 0
+
+        # 一致性
+        cons_hit = word in consistency_index
+        cons_info = consistency_index.get(word, {})
+
+        # 建议动作
+        recommendation = _recommend_action(verify_status, entity.get('score', 0))
+
+        entity['evidence'] = {
+            'scoring': scoring,
+            'consistency': {
+                'hit': cons_hit,
+                'type': cons_info.get('type', 'none'),
+                'detail': cons_info.get('detail', ''),
+            },
+            'verification': {
+                'status': verify_status,
+                'confidence': verify_conf,
+            },
+            'recommendation': recommendation,
+        }
+
+
+def _recommend_action(verify_status: str, score: int) -> str:
+    """根据验证状态和分数生成建议动作。"""
+    if verify_status == 'verified_real':
+        return '建议加白名单' if score < 60 else '无需处理'
+    elif verify_status == 'verified_fake':
+        return '建议加黑名单'
+    elif verify_status == 'need_manual_check':
+        return '建议人工复核'
+    elif verify_status == 'unable_to_verify':
+        return '建议人机协作验证'
+    return '待处理'
