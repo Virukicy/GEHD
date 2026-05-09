@@ -30,10 +30,12 @@ from PySide6.QtGui import (
 
 from hallucination_checker.io.document_text import DocumentText
 from hallucination_checker.engine.checker import gehd_check
-from hallucination_checker.engine.config import load_config
+from hallucination_checker.engine.config import load_config, GEHD_VERSION
 
-# 配置目录（与引擎组共享）
-_CONFIG_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent / 'config'
+from hallucination_checker.gui.settings_dialog import get_config_dir
+
+# 配置目录（与引擎组共享，不私存）
+_CONFIG_DIR = get_config_dir()
 
 # 颜色
 _COLOR_ISSUE_BG = QColor('#FFE0E0')        # 浅红
@@ -132,6 +134,7 @@ class MainWindow(QMainWindow):
         self._current_issues: list[str] = []
         self._current_warnings: list[str] = []
         self._current_l4_queue: list[dict[str, Any]] = []
+        self._current_config: Any = None  # 保存最近一次扫描的 config，供颜色阈值等使用
 
         self._setup_menu()
         self._setup_ui()
@@ -299,7 +302,7 @@ class MainWindow(QMainWindow):
             issues, warnings, stats, l4_queue = gehd_check(
                 text, config, output_verify_queue=output_l4
             )
-        except Exception as e:
+        except (FileNotFoundError, ValueError, OSError, json.JSONDecodeError) as e:
             self._scan_btn.setEnabled(True)
             self._scan_btn.setText('扫描')
             self._statusbar.showMessage('扫描失败')
@@ -311,10 +314,11 @@ class MainWindow(QMainWindow):
         self._current_warnings = warnings
         self._current_stats = stats
         self._current_l4_queue = l4_queue
+        self._current_config = config
 
         # 刷新 UI
         self._refresh_stats(stats)
-        self._refresh_results(issues, warnings, l4_queue)
+        self._refresh_results(issues, warnings, l4_queue, config)
 
         # 恢复按钮
         self._scan_btn.setEnabled(True)
@@ -348,6 +352,7 @@ class MainWindow(QMainWindow):
         issues: list[str],
         warnings: list[str],
         l4_queue: list[dict[str, Any]],
+        config: Any = None,
     ) -> None:
         # 清空
         self._issues_list.clear()
@@ -387,13 +392,15 @@ class MainWindow(QMainWindow):
 
             self._l4_table.setItem(row, 3, QTableWidgetItem(location))
 
-            # 高危/中危行着色
-            if score >= 65:
+            # 高危/中危行着色（阈值从 config 读取，与引擎保持一致）
+            high_th = config.score_high_threshold if config else 65
+            med_th = config.score_medium_threshold if config else 45
+            if score >= high_th:
                 for col in range(4):
                     cell = self._l4_table.item(row, col)
                     if cell:
                         cell.setBackground(_COLOR_L4_HIGH_BG)
-            elif score >= 45:
+            elif score >= med_th:
                 for col in range(4):
                     cell = self._l4_table.item(row, col)
                     if cell:
@@ -499,12 +506,14 @@ class MainWindow(QMainWindow):
     # ---- 设置窗口 ----
 
     def _open_settings(self) -> None:
+        if hasattr(self, '_settings_dialog') and self._settings_dialog.isVisible():
+            self._settings_dialog.raise_()
+            self._settings_dialog.activateWindow()
+            return
         from hallucination_checker.gui.settings_dialog import SettingsDialog
-        dialog = SettingsDialog(self)
-        dialog.setWindowModality(Qt.WindowModality.NonModal)
-        dialog.show()
-        # 保持引用防止被 GC
-        self._settings_dialog = dialog
+        self._settings_dialog = SettingsDialog(self)
+        self._settings_dialog.setWindowModality(Qt.WindowModality.NonModal)
+        self._settings_dialog.show()
 
 
 # ---- 入口 ----
@@ -513,7 +522,7 @@ def main() -> None:
     """启动 GEHD GUI 应用。"""
     app = QApplication(sys.argv)
     app.setApplicationName('GEHD')
-    app.setApplicationVersion('0.2.0')
+    app.setApplicationVersion(GEHD_VERSION)
 
     # 系统默认样式
     app.setStyle('Fusion')

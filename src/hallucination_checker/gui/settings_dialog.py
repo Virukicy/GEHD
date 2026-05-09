@@ -15,8 +15,25 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-# 配置目录绝对路径（与引擎组共享，不私存）
-_CONFIG_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent / 'config'
+
+def get_config_dir() -> Path:
+    """查找 config/ 目录（健壮向上查找，与引擎组共享）。
+
+    先尝试当前工作目录，再基于本文件位置向上查找。
+    """
+    candidates = [
+        Path.cwd() / 'config',
+        Path(__file__).resolve().parents[5] / 'config',
+    ]
+    for p in candidates:
+        if p.is_dir():
+            return p
+    raise FileNotFoundError(
+        '找不到 config/ 目录。请确保在 GEHD 项目根目录或子目录下运行。'
+    )
+
+
+_CONFIG_DIR: Path = get_config_dir()
 
 
 def _read_json_array(filepath: Path, key: str) -> list[str]:
