@@ -228,16 +228,19 @@ AI 代理使用 GEHD 的完整流程（详见 [ai-guide.md](./ai-guide.md)）：
 
 ## 七、当前已知技术债务
 
+> 最后验证：v0.3.0-alpha（2026-05-09）。来源：CHANGELOG.md、Q2A-20260509-001（QA 基线）、E2PM-20260509-001（E 进度）。
+
 | 编号 | 问题 | 状态 |
 |------|------|------|
 | M1 | `io/format_checks.py` 函数参数缺类型注解 | ✅ P1-1 已修复 |
 | M2 | 候选实体使用裸 `dict`，无 `TypedDict` | ⏳ 待处理 |
-| M5 | 去重逻辑在两处重复 | ⏳ 待处理 |
+| M5 | 去重逻辑在三处独立实现（L3/L2.5/L3.7），可提取公共函数 | ⏳ 待处理 |
 | R7 | 缺少 `.editorconfig` | ✅ P1-2 已修复 |
 | R8 | `config.py` 使用四层 `parent` 相对路径 | ✅ P1-0 已修复（parents[3]） |
 | — | `scorers/` 目录为空壳 | ⏳ 待处理 |
 | N8 | DocumentText 可变导致 full_text 可能过时 | ✅ 已修复（frozen=True + tuple） |
-| — | 测试覆盖率不足（仅回归测试，无单元测试） | ✅ P1-5 已修复（27 单元测试，85%） |
+| — | `l3_heuristic.py` 电商平台硬编码残留 | ✅ 已修复（Q2A-20260509-001 确认，外置化到 thresholds.json） |
+| — | GUI 层 mypy 5 项类型错误 | ✅ 已修复（U2Q-20260509-001 确认，零错误） |
 
 ### 设计决策：print vs logging
 
