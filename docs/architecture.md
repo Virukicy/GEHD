@@ -43,7 +43,8 @@ GEHD项目/
 │   │   │   ├── l3_heuristic.py     # L3: 启发式评分（核心）
 │   │   │   ├── l36_consistency.py  # L3.6: 内部一致性检查
 │   │   │   ├── l37_declaration.py  # L3.7: 声明性构造检测
-│   │   │   └── l4_verify.py        # L4: 验证队列构建
+│   │   │   ├── l4_verify.py        # L4: 验证队列构建
+│   │   │   └── l4_web_verify.py    # L4: 联网自动核查
 │   │   └── scorers/            # 评分逻辑（预留，当前在 l3_heuristic.py）
 │   │
 │   ├── io/                     # === 输入输出层 ===
@@ -94,7 +95,8 @@ flowchart TD
     L3 --> L36["🟣 L3.6 一致性检查<br/>高频实体/金额矛盾"]
     L36 --> L37["🟤 L3.7 声明提取<br/>6类声明性构造检测"]
     L37 --> L4["🟢 L4 验证队列<br/>生成待联网核查 JSON"]
-    L4 --> OUTPUT["📊 报告输出<br/>issues + warnings + stats"]
+    L4 --> WEB["🌐 L4 联网核查<br/>DuckDuckGo 两阶验证 → 4种结果标签"]
+    WEB --> OUTPUT["📊 报告输出<br/>issues + warnings + stats"]
 ```
 
 ### 各层详解
@@ -108,6 +110,7 @@ flowchart TD
 | **L3.6** | `l36_consistency.py` | L3 候选列表 | warnings | 同实体出现≥3次标记；同段落多金额共存标记 |
 | **L3.7** | `l37_declaration.py` | 所有文本 | issues | 6类声明性构造检测（语义声明、断言、因果、量化、对比、条件） |
 | **L4** | `l4_verify.py` | L2.5+L3 候选 | JSON 文件 | 汇总候选 → 按深度搜索阈值分深度/快速搜索 → 导出 `_l4_queue.json` |
+| **L4 联网** | `l4_web_verify.py` | L4 队列 | 验证结果 | DuckDuckGo 两阶搜索验证 → 4种结果标签（verified_real/verified_fake/need_manual_check/unable_to_verify） |
 
 ### 评分维度（L3 核心）
 
@@ -153,6 +156,7 @@ flowchart LR
             L36["l36_consistency"]
             L37["l37_declaration"]
             L4["l4_verify"]
+            L4W["l4_web_verify"]
         end
     end
 
@@ -216,7 +220,7 @@ config/*.json（外部化）  >  engine/config.py（内置默认值）
 | `tests/test_gui.py` | GUI 组件测试 | 若干 |
 | `tests/test_layers/` | 分层独立测试 | 若干 |
 | `tests/test_io/` | IO 层独立测试 | 若干 |
-| **合计** | | **76** |
+| **合计** | | **83** |
 
 **运行**：`pytest tests/ -v`
 
@@ -226,7 +230,7 @@ config/*.json（外部化）  >  engine/config.py（内置默认值）
 
 | 版本 | 日期 | 关键变更 |
 |------|------|------|
-| **v0.3.0-alpha** | 2026-05-09 | P2-1 声明提取 + P2-2 适配层 + 配置外置化扫尾 + 五方协作 |
+| **v0.3.0-alpha** | 2026-05-09 | P2-1 声明提取 + P2-2 适配层 + P2-3 联网核查 + 配置外置化扫尾 + 五方协作 |
 | **v0.2.0** | 2026-05-09 | Iteration 2 完成：类型安全+代码质量+日志+测试覆盖率 85% |
 | **v0.1.2** | 2026-05-08 | 代码质量补丁：消除魔术数字 55、删除死代码、配置漂移修复 |
 | **v0.1.1** | 2026-05-08 | 代码质量补丁：测试修复、版本统一、globals() 重构 |
@@ -253,10 +257,10 @@ config/*.json（外部化）  >  engine/config.py（内置默认值）
    ├── ✅ P1-4: 异常处理标准化 — except Exception→精确异常类型
    └── ✅ P1-5: 单元测试 — 27新测试，覆盖率 30%→85%
 
-⏳ Iteration 3: 壁垒化 v0.3.0（进行中，2/5）
+⏳ Iteration 3: 壁垒化 v0.3.0（进行中，3/5）
    ├── ✅ P2-1: L3.7 声明提取 — 语义检测 0→5 issues, 6类声明模式
    ├── ✅ P2-2: 适配层补全 — from_text/from_markdown
-   ├── ⏳ P2-3: L4 联网搜索自动核查
+   ├── ✅ P2-3: L4 联网自动核查 — DuckDuckGo 两阶验证, 4种结果标签
    ├── ⏳ P2-4: 证据链生成
    └── ⏳ P2-5: 多模型交叉校验
 ```

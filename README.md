@@ -2,7 +2,7 @@
 
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Version](https://img.shields.io/badge/version-0.3.0--alpha-informational)](https://github.com/Virukicy/GEHD)
-[![Tests](https://img.shields.io/badge/tests-76%2F76-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/tests-83%2F83-brightgreen)](tests/)
 
 基于**纯规则引擎**的轻量级文档幻觉核查工具。输入 `.docx` 文档，自动检测 AI 生成内容中可能被编造的专有名词、统计数据、引述和时间线。
 
@@ -81,9 +81,9 @@ python -m hallucination_checker document.docx --verify
 ## 项目状态
 
 - [x] **Iteration 1 完成** — 标准化项目结构、模块拆分、外部化配置
-- [x] **Iteration 2 完成** — 类型安全/mypy/Ruff/logging/异常处理/76测试/85%覆盖率
-- [x] **Iteration 3 进行中 (2/5)** — P2-1 声明提取 + P2-2 适配层补全
-- [ ] **Iteration 3 完成** — P2-3 联网核查 + P2-4 证据链 + P2-5 多模型
+- [x] **Iteration 2 完成** — 类型安全/mypy/Ruff/logging/异常处理/83测试/85%覆盖率
+- [x] **Iteration 3 进行中 (3/5)** — P2-1 声明提取 + P2-2 适配层 + P2-3 联网核查
+- [ ] **Iteration 3 完成** — P2-4 证据链 + P2-5 多模型
 
 当前版本：**v0.3.0-alpha**
 
