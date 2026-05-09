@@ -724,6 +724,7 @@ def _load_thresholds(filepath: Path) -> dict | None:
             'min_candidate_length': 'min_candidate_length',
             'deep_search_threshold': 'deep_search_threshold',
             'l4_search_timeout': 'l4_search_timeout',
+            'auto_verify': 'l4_auto_verify',
         }
 
         # 数值阈值
