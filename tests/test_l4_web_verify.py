@@ -74,7 +74,7 @@ class TestL4VerifyQueue:
         queue = [sample_queue[0]]
         with patch(
             'hallucination_checker.engine.layers.l4_web_verify._search_web',
-            side_effect=Exception('Network error'),
+            side_effect=OSError('Network error'),
         ):
             result = verify_queue(queue, config)
             assert result[0]['status'] in ('unable_to_verify', 'verified_fake')

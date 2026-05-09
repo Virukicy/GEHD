@@ -118,7 +118,7 @@ def _search_web(query: str, timeout: float = 5) -> list[str]:
         cleaned = [re.sub(r'<[^>]+>', '', s).strip() for s in snippets]
         return [s for s in cleaned if len(s) > 20]
 
-    except Exception:
+    except (httpx.HTTPError, OSError, ValueError):
         return []
 
 
@@ -178,13 +178,13 @@ def _deep_verify(
     for q in queries:
         try:
             all_snippets.extend(_search_web(q, timeout / len(queries)))
-        except Exception:
+        except (OSError, RuntimeError):
             continue
 
     if not all_snippets:
         try:
             all_snippets = _search_web(word, timeout)
-        except Exception:
+        except (OSError, RuntimeError):
             pass
         if not all_snippets:
             return ('unable_to_verify', {
