@@ -14,7 +14,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from PySide6.QtCore import QMimeData, Qt
 from PySide6.QtGui import (
@@ -152,6 +152,7 @@ class MainWindow(QMainWindow):
         self._current_warnings: list[str] = []
         self._current_l4_queue: list[dict[str, Any]] = []
         self._current_config: Any = None  # 保存最近一次扫描的 config，供颜色阈值等使用
+        self._settings_dialog: Any = None  # 设置窗口引用，防止多实例和 GC
 
         self._setup_menu()
         self._setup_ui()

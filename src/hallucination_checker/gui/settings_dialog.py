@@ -73,7 +73,8 @@ def _read_json_obj(filepath: Path) -> dict[str, Any]:
     """读整个 JSON 文件。"""
     try:
         with open(filepath, encoding='utf-8') as f:
-            return json.load(f)
+            data: Any = json.load(f)
+        return data if isinstance(data, dict) else {}
     except (FileNotFoundError, json.JSONDecodeError):
         return {}
 
@@ -93,7 +94,7 @@ class SettingsDialog(QDialog):
       - 阈值：数值输入框 + 字段说明
     """
 
-    def __init__(self, parent: QDialog | None = None) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle('GEHD 设置')
         self.setMinimumSize(560, 480)
