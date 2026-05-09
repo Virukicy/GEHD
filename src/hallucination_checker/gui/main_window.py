@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QMimeData, Qt
+from PySide6.QtCore import QMimeData, Qt, QThread, Signal
 from PySide6.QtGui import (
     QAction,
     QColor,
@@ -206,6 +206,56 @@ class EvidenceDialog(QDialog):
         close_btn = QPushButton('关闭')
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn)
+
+
+# ---- 后台扫描线程 ----
+
+class ScanWorker(QThread):
+    """后台扫描工作线程，避免阻塞主线程导致 macOS 杀进程。"""
+
+    finished = Signal(dict)   # {'issues': ..., 'warnings': ..., 'stats': ..., 'l4_queue': ..., 'config': ...}
+    error_msg = Signal(str)
+    progress = Signal(str)
+
+    def __init__(
+        self,
+        text: DocumentText,
+        config: Any,
+        output_l4: bool,
+        cross_validate: bool,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self._text = text
+        self._config = config
+        self._output_l4 = output_l4
+        self._cross_validate = cross_validate
+
+    def run(self) -> None:
+        try:
+            if self._cross_validate:
+                self.progress.emit('三路并行交叉校验中...')
+                issues, warnings, stats, l4_queue = gehd_cross_validate(
+                    self._text, output_verify_queue=self._output_l4
+                )
+            else:
+                if self._config and getattr(self._config, 'l4_auto_verify', False):
+                    self.progress.emit('扫描中，正在联网核查...')
+                else:
+                    self.progress.emit('扫描中...')
+                issues, warnings, stats, l4_queue = gehd_check(
+                    self._text, self._config, output_verify_queue=self._output_l4
+                )
+
+            self.finished.emit({
+                'issues': issues,
+                'warnings': warnings,
+                'stats': stats,
+                'l4_queue': l4_queue,
+                'config': self._config,
+            })
+        except Exception as e:
+            self.error_msg.emit(str(e))
 
 
 # ---- 主窗口 ----
@@ -422,28 +472,31 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, '格式不支持', '当前仅支持 .docx 格式。')
             return
         output_l4 = self._verify_checkbox.isChecked()
-        self._scan_btn.setEnabled(False)
-        self._scan_btn.setText('扫描中...')
-        self._statusbar.showMessage('扫描中...')
-        QApplication.processEvents()
+        cross_validate = self._cross_validate_checkbox.isChecked()
 
         try:
             config = load_config()
             text = DocumentText.from_docx(path)
-            if self._cross_validate_checkbox.isChecked():
-                issues, warnings, stats, l4_queue = gehd_cross_validate(
-                    text, output_verify_queue=output_l4
-                )
-            else:
-                issues, warnings, stats, l4_queue = gehd_check(
-                    text, config, output_verify_queue=output_l4
-                )
         except (FileNotFoundError, ValueError, OSError, json.JSONDecodeError) as e:
-            self._scan_btn.setEnabled(True)
-            self._scan_btn.setText('扫描')
-            self._statusbar.showMessage('扫描失败')
-            QMessageBox.critical(self, '扫描错误', f'扫描过程中发生错误：\n{e}')
+            QMessageBox.critical(self, '加载失败', f'无法加载文档：\n{e}')
             return
+
+        self._scan_btn.setEnabled(False)
+        self._scan_btn.setText('扫描中...')
+        self._statusbar.showMessage('扫描中...')
+
+        self._worker = ScanWorker(text, config, output_l4, cross_validate, self)
+        self._worker.finished.connect(self._on_scan_finished)
+        self._worker.error_msg.connect(self._on_scan_error)
+        self._worker.progress.connect(self._statusbar.showMessage)
+        self._worker.start()
+
+    def _on_scan_finished(self, result: dict[str, Any]) -> None:
+        issues: list[str] = result['issues']
+        warnings: list[str] = result['warnings']
+        stats: dict[str, int] = result['stats']
+        l4_queue: list[dict[str, Any]] = result['l4_queue']
+        config: Any = result['config']
 
         self._current_issues = issues
         self._current_warnings = warnings
@@ -462,6 +515,12 @@ class MainWindow(QMainWindow):
             if issue_count > 0
             else '扫描完成，未发现问题'
         )
+
+    def _on_scan_error(self, error: str) -> None:
+        self._scan_btn.setEnabled(True)
+        self._scan_btn.setText('扫描')
+        self._statusbar.showMessage('扫描失败')
+        QMessageBox.critical(self, '扫描错误', f'扫描过程中发生错误：\n{error}')
 
     # ---- 统计条刷新 ----
 
