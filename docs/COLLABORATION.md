@@ -158,11 +158,11 @@ git diff --stat          ← 是否踩到其他组的文件域？
 五方智能体不能直接对话。通讯方式：**用户在对话中转发**。
 
 ```
-E  → 用户 → U / QA / PM
-U  → 用户 → E / QA / PM
-QA → 用户 → E / U
-D  → 用户 → E / U / QA / 全体
-PM → 用户 → E / U / QA / D
+E  → 用户 → U / QA / D / PM / 全体
+U  → 用户 → E / QA / D / PM / 全体
+QA → 用户 → E / U / D / PM / 全体
+D  → 用户 → E / U / QA / PM / 全体
+PM → 用户 → E / U / QA / D / 全体
 ```
 
 ### 传递文档规范
@@ -172,15 +172,24 @@ PM → 用户 → E / U / QA / D
 | 方向 | 前缀 | 位置 | 示例 |
 |------|------|------|------|
 | E→U | `E2U-YYYYMMDD-NNN` | `.workbuddy/` | `E2U-20260509-001.md` |
-| U→E | `U2E-YYYYMMDD-NNN` | `.workbuddy/` | `U2E-20260509-001.md` |
-| E→PM | `E2PM-YYYYMMDD-NNN` | `.workbuddy/` | `E2PM-20260509-001.md` |
+| E→QA | `E2Q-YYYYMMDD-NNN` | `.workbuddy/` | `E2Q-20260509-001.md` |
 | E→D | `E2D-YYYYMMDD-NNN` | `.workbuddy/` | `E2D-20260509-001.md` |
+| E→PM | `E2PM-YYYYMMDD-NNN` | `.workbuddy/` | `E2PM-20260509-001.md` |
+| E→全体 | `E2A-YYYYMMDD-NNN` | `.workbuddy/` | `E2A-20260509-001.md` |
+| U→E | `U2E-YYYYMMDD-NNN` | `.workbuddy/` | `U2E-20260509-001.md` |
+| U→QA | `U2Q-YYYYMMDD-NNN` | `.workbuddy/` | `U2Q-20260509-001.md` |
+| U→D | `U2D-YYYYMMDD-NNN` | `.workbuddy/` | `U2D-20260509-001.md` |
+| U→PM | `U2PM-YYYYMMDD-NNN` | `.workbuddy/` | `U2PM-20260509-001.md` |
+| U→全体 | `U2A-YYYYMMDD-NNN` | `.workbuddy/` | `U2A-20260509-001.md` |
 | QA→E | `Q2E-YYYYMMDD-NNN` | `.workbuddy/` | `Q2E-20260509-001.md` |
 | QA→U | `Q2U-YYYYMMDD-NNN` | `.workbuddy/` | `Q2U-20260509-001.md` |
+| QA→D | `Q2D-YYYYMMDD-NNN` | `.workbuddy/` | `Q2D-20260509-001.md` |
+| QA→PM | `Q2PM-YYYYMMDD-NNN` | `.workbuddy/` | `Q2PM-20260509-001.md` |
 | QA→全体 | `Q2A-YYYYMMDD-NNN` | `.workbuddy/` | `Q2A-20260509-001.md` |
 | D→E | `D2E-YYYYMMDD-NNN` | `.workbuddy/` | `D2E-20260509-001.md` |
 | D→U | `D2U-YYYYMMDD-NNN` | `.workbuddy/` | `D2U-20260509-001.md` |
 | D→QA | `D2Q-YYYYMMDD-NNN` | `.workbuddy/` | `D2Q-20260509-001.md` |
+| D→PM | `D2PM-YYYYMMDD-NNN` | `.workbuddy/` | `D2PM-20260509-001.md` |
 | D→全体 | `D2A-YYYYMMDD-NNN` | `.workbuddy/` | `D2A-20260509-001.md` |
 | PM→E | `PM2E-YYYYMMDD-NNN` | `.workbuddy/` | `PM2E-20260509-001.md` |
 | PM→U | `PM2U-YYYYMMDD-NNN` | `.workbuddy/` | `PM2U-20260509-001.md` |
