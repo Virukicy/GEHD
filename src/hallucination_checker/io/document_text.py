@@ -53,7 +53,7 @@ class TextPart:
         return self.location
 
 
-@dataclass
+@dataclass(frozen=True)
 class DocumentText:
     """格式无关的文档表示 —— 引擎的唯一天然输入。
 
@@ -61,10 +61,10 @@ class DocumentText:
       docx  → DocumentText.from_docx(path)
       txt   → DocumentText.from_text(path)
       md    → DocumentText.from_markdown(path)
-      直接  → DocumentText(parts=[TextPart(...), ...])
+      直接  → DocumentText(parts=(TextPart(...), ...))
     """
 
-    parts: list[TextPart]
+    parts: tuple[TextPart, ...]
     full_text: str = field(init=False)
 
     def __post_init__(self):
@@ -88,7 +88,7 @@ class DocumentText:
 
         doc = load_docx(str(filepath))
         raw_parts = extract_all_text(doc)
-        parts = [TextPart(location=loc, text=txt) for loc, txt in raw_parts]
+        parts = tuple(TextPart(location=loc, text=txt) for loc, txt in raw_parts)
         return cls(parts=parts)
 
     @classmethod
