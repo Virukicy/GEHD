@@ -8,12 +8,22 @@ import json
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QTabWidget, QWidget,
-    QPlainTextEdit, QPushButton, QLabel, QSpinBox, QFormLayout,
-    QScrollArea, QMessageBox, QGroupBox, QGridLayout,
-)
 from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QDialog,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QPlainTextEdit,
+    QPushButton,
+    QScrollArea,
+    QSpinBox,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
 
 def get_config_dir() -> Path:
@@ -39,7 +49,7 @@ _CONFIG_DIR: Path = get_config_dir()
 def _read_json_array(filepath: Path, key: str) -> list[str]:
     """读 JSON 文件中指定 key 的数组。"""
     try:
-        with open(filepath, 'r', encoding='utf-8') as f:
+        with open(filepath, encoding='utf-8') as f:
             data = json.load(f)
         items = data.get(key, [])
         return items if isinstance(items, list) else []
@@ -50,7 +60,7 @@ def _read_json_array(filepath: Path, key: str) -> list[str]:
 def _write_json_array(filepath: Path, key: str, items: list[str]) -> None:
     """写入 JSON 文件指定 key 的数组，保留所有其他字段。"""
     try:
-        with open(filepath, 'r', encoding='utf-8') as f:
+        with open(filepath, encoding='utf-8') as f:
             data = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         data = {}
@@ -62,7 +72,7 @@ def _write_json_array(filepath: Path, key: str, items: list[str]) -> None:
 def _read_json_obj(filepath: Path) -> dict[str, Any]:
     """读整个 JSON 文件。"""
     try:
-        with open(filepath, 'r', encoding='utf-8') as f:
+        with open(filepath, encoding='utf-8') as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return {}
@@ -341,7 +351,7 @@ class SettingsDialog(QDialog):
             QMessageBox.warning(self, '保存失败', f'写入配置文件时出错：{e}')
         self.accept()
 
-    def closeEvent(self, event) -> None:
+    def closeEvent(self, event) -> None:  # noqa: N802 (Qt override)
         """关闭窗口时自动保存。"""
         try:
             self._save_all()

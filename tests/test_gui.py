@@ -12,20 +12,17 @@ import json
 import tempfile
 from pathlib import Path
 
-import pytest
-
 from hallucination_checker.gui.main_window import (
+    _append_to_json_array,
     _extract_word_from_issue,
     _word_in_json_array,
-    _append_to_json_array,
 )
 from hallucination_checker.gui.settings_dialog import (
     _read_json_array,
-    _write_json_array,
     _read_json_obj,
+    _write_json_array,
     _write_json_obj,
 )
-
 
 # ---- 词提取测试 ----
 

@@ -5,5 +5,4 @@
 """
 from hallucination_checker.gui.main_window import main
 
-
 __all__ = ['main']

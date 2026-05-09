@@ -16,23 +16,40 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLineEdit, QPushButton, QCheckBox, QLabel, QTabWidget,
-    QListWidget, QListWidgetItem, QTableWidget, QTableWidgetItem,
-    QHeaderView, QStatusBar, QMenu, QFileDialog, QFrame,
-    QMessageBox, QSplitter, QSizePolicy,
-)
-from PySide6.QtCore import Qt, QMimeData
+from PySide6.QtCore import QMimeData, Qt
 from PySide6.QtGui import (
-    QAction, QColor, QDragEnterEvent, QDropEvent, QFont, QIcon,
+    QAction,
+    QColor,
+    QDragEnterEvent,
+    QDropEvent,
+)
+from PySide6.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QFileDialog,
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QMainWindow,
+    QMenu,
+    QMessageBox,
+    QPushButton,
+    QStatusBar,
+    QTableWidget,
+    QTableWidgetItem,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
 
-from hallucination_checker.io.document_text import DocumentText
 from hallucination_checker.engine.checker import gehd_check
-from hallucination_checker.engine.config import load_config, GEHD_VERSION
-
+from hallucination_checker.engine.config import GEHD_VERSION, load_config
 from hallucination_checker.gui.settings_dialog import get_config_dir
+from hallucination_checker.io.document_text import DocumentText
 
 # 配置目录（与引擎组共享，不私存）
 _CONFIG_DIR = get_config_dir()
@@ -65,7 +82,7 @@ def _extract_word_from_issue(text: str) -> str:
 def _word_in_json_array(filepath: Path, key: str, word: str) -> bool:
     """检查词是否已在 JSON 数组中。"""
     try:
-        with open(filepath, 'r', encoding='utf-8') as f:
+        with open(filepath, encoding='utf-8') as f:
             data = json.load(f)
         items = data.get(key, [])
         return word.strip() in items
@@ -76,7 +93,7 @@ def _word_in_json_array(filepath: Path, key: str, word: str) -> bool:
 def _append_to_json_array(filepath: Path, key: str, word: str) -> None:
     """向 JSON 文件数组追加一个词条（去重）。"""
     try:
-        with open(filepath, 'r', encoding='utf-8') as f:
+        with open(filepath, encoding='utf-8') as f:
             data = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         data = {}
@@ -99,7 +116,7 @@ class DropLineEdit(QLineEdit):
         self.setAcceptDrops(True)
         self.setPlaceholderText('选择 .docx 文件，或拖拽到此处，或手动输入路径')
 
-    def dragEnterEvent(self, event: QDragEnterEvent) -> None:
+    def dragEnterEvent(self, event: QDragEnterEvent) -> None:  # noqa: N802 (Qt override)
         mime: QMimeData | None = event.mimeData()
         if mime and mime.hasUrls():
             for url in mime.urls():
@@ -108,7 +125,7 @@ class DropLineEdit(QLineEdit):
                     return
         event.ignore()
 
-    def dropEvent(self, event: QDropEvent) -> None:
+    def dropEvent(self, event: QDropEvent) -> None:  # noqa: N802 (Qt override)
         mime = event.mimeData()
         if mime and mime.hasUrls():
             for url in mime.urls():

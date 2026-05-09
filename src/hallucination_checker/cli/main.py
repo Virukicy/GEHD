@@ -7,8 +7,8 @@ import sys
 from ..engine.checker import gehd_check
 from ..engine.config import GEHDConfig, load_config
 from ..engine.layers.l4_verify import export_queue, load_cache
-from ..io.docx_reader import load_docx
 from ..io.document_text import DocumentText
+from ..io.docx_reader import load_docx
 from ..io.format_checks import (
     check_blank_paragraphs,
     check_emoji,

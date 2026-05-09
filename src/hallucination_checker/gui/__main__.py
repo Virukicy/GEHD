@@ -8,6 +8,6 @@ _plugins_dir = Path(sys.executable).parent.parent / 'lib' / f'python{sys.version
 if _plugins_dir.exists() and 'QT_QPA_PLATFORM_PLUGIN_PATH' not in os.environ:
     os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = str(_plugins_dir)
 
-from hallucination_checker.gui.main_window import main
+from hallucination_checker.gui.main_window import main  # noqa: E402 (Qt插件路径必须在import前设置)
 
 main()
