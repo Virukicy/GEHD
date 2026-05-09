@@ -55,6 +55,23 @@ pyproject.toml           ← 🔵 E（版本号等）
 📗 D:  docs/ + README.md，仅改文档
 ```
 
+### workspace/ 分区
+
+```
+workspace/                ← 各组过程文件分区（gitignored）
+├── E/                    ← E 组（设计文档、技术方案）
+├── U/                    ← U 组（截图、迭代计划）
+├── QA/                   ← QA 组（基线数据、审计报告、覆盖率）
+├── D/                    ← D 组（文档草稿、审计清单）
+└── PM/                   ← PM（决策记录、规划草稿）
+```
+
+规则：
+- `workspace/` 在 `.gitignore` 中，不推 GitHub
+- 各组只读写自己的 `workspace/{E,U,QA,D,PM}/`
+- 组内可自由创建子目录，以组内 README.md 为约定
+- 过程文件在此分区内存活，不受版本发布影响
+
 ---
 
 ## 三、条条铁律
@@ -169,6 +186,7 @@ PM → 用户 → E / U / QA / D
 | PM→U | `PM2U-YYYYMMDD-NNN` | `.workbuddy/` | `PM2U-20260509-001.md` |
 | PM→QA | `PM2Q-YYYYMMDD-NNN` | `.workbuddy/` | `PM2Q-20260509-001.md` |
 | PM→D | `PM2D-YYYYMMDD-NNN` | `.workbuddy/` | `PM2D-20260509-001.md` |
+| PM→全体 | `PM2A-YYYYMMDD-NNN` | `.workbuddy/` | `PM2A-20260509-001.md` |
 
 **规则**：
 - 所有团队的传递统一写入项目 `.workbuddy/`
