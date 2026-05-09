@@ -22,6 +22,7 @@ from .layers.l3_heuristic import deduplicate_entities, extract_and_score
 from .layers.l4_verify import build_verify_queue
 from .layers.l25_nonentity import deduplicate_l25, detect_non_entity
 from .layers.l36_consistency import run_consistency_checks
+from .layers.l37_declaration import deduplicate_declarations, detect_declarations
 
 
 def gehd_check(
@@ -93,6 +94,21 @@ def _gehd_check_impl(
     # L3: 启发式实体提取 + 评分
     l3_candidates = extract_and_score(all_parts, full_text, config)
     l3_ranked = deduplicate_entities(l3_candidates)
+
+    # L3.7: 声明提取
+    decl_candidates = detect_declarations(all_parts, config)
+    decl_ranked = deduplicate_declarations(decl_candidates)
+
+    for ent in decl_ranked:
+        msg = (
+            f'[{ent["category"]}] '
+            f'{ent["location"]} "{ent["word"]}" '
+            f'声明:"{ent.get("decl_text", "")}"'
+        )
+        if ent['score'] >= config.score_high_threshold:
+            issues.append(f'[声明-L3.7高危] {msg}')
+        elif ent['score'] >= config.score_medium_threshold:
+            warnings.append(f'[声明待核实] {msg}')
 
     # L3.6: 内部一致性检查
     consistency_issues = run_consistency_checks(l3_candidates, all_parts)

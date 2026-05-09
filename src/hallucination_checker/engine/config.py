@@ -539,6 +539,49 @@ class GEHDConfig:
         )
     )
 
+    # --- L3.7 声明提取模式 ---
+    declaration_patterns: tuple[tuple[str, str, int], ...] = field(
+        default_factory=lambda: (
+            (
+                r'([\u4e00-\u9fff]{2,8}(?:与|和|同|联合|携手|合作)'
+                r'[\u4e00-\u9fff]{2,8}(?:联合|共同|合作|携手|正式|宣布|签署|达成)'
+                r'(?:成立|建立|设立|创建|组建|推出|启动|开展|发布))',
+                '合作关系声明',
+                68,
+            ),
+            (
+                r'([\u4e00-\u9fff]{2,5}(?:教授|博士|院士|CEO|总裁|创始人|先生|女士|经理|总))'
+                r'.{0,20}(?:宣布|称|表示|透露|强调|指出|认为|声称)',
+                '权威人物声明',
+                68,
+            ),
+            (
+                r'(?:[\u4e00-\u9fff]{2,4}(?:教授|博士))在'
+                r'(?:[\u4e00-\u9fff]{2,8}|[A-Z][a-z]+)上(?:发表|刊发|发布)',
+                '学术成果声明',
+                68,
+            ),
+            (
+                r'(?:据|根据|参考|援引)'
+                r'(?:[\u4e00-\u9fff]{2,8}(?:日报|周报|时报|杂志|通讯社|新闻|网|报))',
+                '媒体引述声明',
+                48,
+            ),
+            (
+                r'([\u4e00-\u9fff]{2,6}(?:部|委|局|办|署|院|会))'
+                r'(?:发布|印发|出台|颁布|实施)',
+                '政策文件声明',
+                48,
+            ),
+            (
+                r'(?:[\u4e00-\u9fff]{2,6}(?:宣布|称|表示|透露|强调|指出))'
+                r'(?:了|过|到|在|将|会|已|正)',
+                '组织声明',
+                45,
+            ),
+        )
+    )
+
     # ---- 工厂方法 ----
 
     @classmethod
@@ -574,6 +617,13 @@ class GEHDConfig:
         l25_items = _load_patterns(config_dir / 'l25_patterns.json', 'patterns')
         if l25_items is not None:
             kwargs['l25_patterns'] = tuple(l25_items)
+
+        # --- 声明提取模式 ---
+        decl_items = _load_patterns(
+            config_dir / 'declaration_patterns.json', 'patterns'
+        )
+        if decl_items is not None:
+            kwargs['declaration_patterns'] = tuple(decl_items)
 
         # --- 排除词 ---
         ex_items = _load_list(config_dir / 'exclude_words.json', 'exclude_words')
