@@ -13,11 +13,11 @@
 - **P2-3**: L4 联网自动核查 — DuckDuckGo 两阶验证, 4种结果标签
 - **P2-2**: 适配层补全 — from_text / from_markdown 工厂方法
 - 配置外置化扫尾 — L3 硬编码列表迁入 thresholds.json (l3_behavior)
-- 协作协议升级 — 二元→四方（引擎 + UI + QA + PM）
-- GUI 集成 — PySide6 桌面应用交付
+- GUI 桌面应用 — PySide6 全功能交付
+- 协作协议 — 五方协作（E/U/QA/D/PM）
 
 ### 质量指标
-- 测试: **97/97**
+- 测试: **114/114**
 - ruff: **零错误**
 - M2 验收: semantic ≥1 ✅, benchmark 0 issues ✅
 
