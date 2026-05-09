@@ -1,14 +1,20 @@
 """
 GEHD 主编排器 —— 组合 L1→L4 全链路核查流程。
+
+入口（v0.3.0 冻结）:
+  gehd_check(text: DocumentText, config, ...) → 主入口
+  gehd_check_docx(doc: Document, config, ...) → 向后兼容（v0.4.0 移除）
 """
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from docx.document import Document
 
+from ..io.document_text import DocumentText
 from .config import GEHDConfig
 from .extractors.text_extractor import extract_all_text
 from .layers.l2_blacklist import scan_blacklist
@@ -19,25 +25,52 @@ from .layers.l36_consistency import run_consistency_checks
 
 
 def gehd_check(
-    doc: Document, config: GEHDConfig, output_verify_queue: bool = False
+    text: DocumentText, config: GEHDConfig, output_verify_queue: bool = False
 ) -> tuple[list[str], list[str], dict, list[dict]]:
-    """GEHD 主核查入口。
+    """GEHD 主核查入口（v0.3.0 冻结签名）。
 
     Args:
-        doc: python-docx Document 对象
+        text: DocumentText — 格式无关的文档表示
         config: GEHDConfig 配置实例
         output_verify_queue: 是否构建 L4 验证队列
 
     Returns:
         (issues, warnings, stats, l4_verify_queue)
     """
+    all_parts = [(p.location, p.text) for p in text.parts]
+    return _gehd_check_impl(all_parts, text.full_text, config, output_verify_queue)
+
+
+def gehd_check_docx(
+    doc: Document, config: GEHDConfig, output_verify_queue: bool = False
+) -> tuple[list[str], list[str], dict, list[dict]]:
+    """【已弃用】从 docx Document 对象执行核查。
+
+    v0.4.0 将移除此函数，请使用 gehd_check(DocumentText, ...)。
+    """
+    warnings.warn(
+        'gehd_check_docx() 已弃用，请使用 gehd_check(DocumentText, ...)',
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    all_parts = extract_all_text(doc)
+    full_text = '\n'.join(text for _, text in all_parts)
+    return _gehd_check_impl(all_parts, full_text, config, output_verify_queue)
+
+
+# ---- 核心实现（不暴露，两个入口共享） ----
+
+
+def _gehd_check_impl(
+    all_parts: list[tuple[str, str]],
+    full_text: str,
+    config: GEHDConfig,
+    output_verify_queue: bool = False,
+) -> tuple[list[str], list[str], dict, list[dict]]:
+    """gehd_check 的核心实现——所有入口最终汇入此函数。"""
     issues: list[str] = []
     warnings: list[str] = []
     l4_verify_queue: list[dict] = []
-
-    # 文本提取
-    all_parts = extract_all_text(doc)
-    full_text = '\n'.join(text for _, text in all_parts)
 
     # L2: 黑名单拦截
     issues.extend(scan_blacklist(all_parts, config))

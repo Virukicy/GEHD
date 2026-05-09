@@ -8,6 +8,7 @@ from ..engine.checker import gehd_check
 from ..engine.config import GEHDConfig, load_config
 from ..engine.layers.l4_verify import export_queue, load_cache
 from ..io.docx_reader import load_docx
+from ..io.document_text import DocumentText
 from ..io.format_checks import (
     check_blank_paragraphs,
     check_emoji,
@@ -46,6 +47,7 @@ def check_docx(
     # 加载文档
     try:
         doc = load_docx(filepath)
+        text = DocumentText.from_docx(filepath)
     except (FileNotFoundError, ValueError) as e:
         logger.error('文档加载失败: %s', e)
         print(f'[ERROR] {e}')
@@ -54,16 +56,16 @@ def check_docx(
     all_issues: list[str] = []
     all_warnings: list[str] = []
 
-    # Check 1-5: 基础格式检查
+    # Check 1-5: 基础格式检查（docx 专用）
     all_issues.extend(check_markdown(doc))
     all_issues.extend(check_empty_table_rows(doc))
     all_issues.extend(check_blank_paragraphs(doc, config))
     all_issues.extend(check_emoji(doc))
     all_warnings.extend(check_long_text(doc, config))
 
-    # GEHD 幻觉核查
+    # GEHD 幻觉核查（v0.3.0 新接口）
     gehd_issues, gehd_warnings, gehd_stats, l4_queue = gehd_check(
-        doc, config, output_verify_queue=do_verify
+        text, config, output_verify_queue=do_verify
     )
     all_issues.extend(gehd_issues)
     all_warnings.extend(gehd_warnings)

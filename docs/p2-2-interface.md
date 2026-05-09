@@ -94,9 +94,11 @@ io/      → 各格式适配器（from_docx, from_text, from_markdown...）
 | 版本 | `gehd_check(doc)` | `gehd_check(DocumentText)` |
 |------|------|------|
 | v0.2.0 | ✅ 当前 | — |
+| **当前** | `gehd_check_docx()` (DeprecationWarning) | ✅ **主入口已切** |
 | v0.3.0 | ❌ 移除 | ✅ 新接口 |
 
-无过渡期——UI 组和引擎组同步切换到新接口。v0.3.0 发布即切换。
+**当前状态**：新接口已实装。`gehd_check(DocumentText, ...)` 是主入口，CLI 已切换。
+`gehd_check_docx()` 保留但触发 DeprecationWarning，v0.3.0 删除。
 
 ---
 
