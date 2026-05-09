@@ -34,5 +34,14 @@
   "l4": {
     "deep_search_threshold": 55,
     "_deep_search_note": "≥此分的候选使用深度搜索（多引擎交叉验证），<此分使用快速搜索（单引擎判断）"
+  },
+  "l3_behavior": {
+    "_description": "L3 评分的场景特定参数（换场景时替换这些列表即可）",
+    "single_char_platform_suffixes": ["购", "宝", "东"],
+    "_suffixes_note": "单字+此后缀的实体词可获得平台加分",
+    "plausible_chars": ["淘", "京", "拼", "多", "美", "苏", "阿", "腾", "百"],
+    "_plausible_chars_note": "含这些字符的实体词判定为可信（降分处理）",
+    "plausible_char_categories": ["电商平台名", "公司机构名"],
+    "_categories_note": "可信字符降分仅在以下类别中生效"
   }
 }

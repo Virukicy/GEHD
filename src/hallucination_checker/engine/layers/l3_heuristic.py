@@ -59,8 +59,11 @@ def extract_and_score(
                         score = max(5, score - config.score_l35_penalty)
                         break
 
-                # 单字电商平台加分
-                if re.match(r'^[\u4e00-\u9fff]{1}(?:购|宝|东)', word):
+                # 单字平台加分（后缀列表来自 config）
+                if any(
+                    re.match(rf'^[\u4e00-\u9fff]{{1}}(?:{re.escape(s)})', word)
+                    for s in config.single_char_platform_suffixes
+                ):
                     score += config.score_single_char_platform
 
                 # 频率信号
@@ -70,11 +73,11 @@ def extract_and_score(
                 elif count >= 2:
                     score += config.score_med_freq_bonus
 
-                # 可信字符降分
+                # 可信字符降分（字符列表和生效类别来自 config）
                 plausible_chars = any(
-                    c in word for c in ['淘', '京', '拼', '多', '美', '苏', '阿', '腾', '百']
+                    c in word for c in config.plausible_chars
                 )
-                if plausible_chars and category in ('电商平台名', '公司机构名'):
+                if plausible_chars and category in config.plausible_char_categories:
                     score += config.score_plausible_char_penalty
 
                 score = max(config.score_minimum, score)

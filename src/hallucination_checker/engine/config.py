@@ -582,6 +582,23 @@ class GEHDConfig:
         )
     )
 
+    # --- 单字平台后缀（电商场景配置，用于 L3 评分） ---
+    single_char_platform_suffixes: frozenset[str] = field(
+        default_factory=lambda: frozenset({'购', '宝', '东'})
+    )
+
+    # --- 可信字符列表（电商场景配置，用于 L3 评分降分） ---
+    plausible_chars: frozenset[str] = field(
+        default_factory=lambda: frozenset({
+            '淘', '京', '拼', '多', '美', '苏', '阿', '腾', '百',
+        })
+    )
+
+    # --- 可信字符生效类别 ---
+    plausible_char_categories: frozenset[str] = field(
+        default_factory=lambda: frozenset({'电商平台名', '公司机构名'})
+    )
+
     # ---- 工厂方法 ----
 
     @classmethod
@@ -706,9 +723,10 @@ def _load_thresholds(filepath: Path) -> dict | None:
             'deep_search_threshold': 'deep_search_threshold',
         }
 
+        # 数值阈值
         for json_key, value in flat.items():
             if json_key.startswith('_'):
-                continue  # 跳过注释键
+                continue
             field_name = _key_map.get(json_key)
             if field_name is not None:
                 result[field_name] = value
@@ -718,6 +736,18 @@ def _load_thresholds(filepath: Path) -> dict | None:
                     f'请检查 config/thresholds.json 中的键名是否正确。',
                     stacklevel=2,
                 )
+
+        # frozenset 字段（来自 l3_behavior 节）
+        behavior = data.get('l3_behavior', {})
+        frozenset_fields = {
+            'single_char_platform_suffixes': 'single_char_platform_suffixes',
+            'plausible_chars': 'plausible_chars',
+            'plausible_char_categories': 'plausible_char_categories',
+        }
+        for json_key, field_name in frozenset_fields.items():
+            items = behavior.get(json_key)
+            if isinstance(items, list) and len(items) > 0:
+                result[field_name] = frozenset(items)
 
         return result if result else None
     except (json.JSONDecodeError, FileNotFoundError):
