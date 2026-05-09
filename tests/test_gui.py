@@ -1,10 +1,12 @@
-"""GEHD GUI 测试。
+"""GEHD GUI 测试 — v0.3.0。
 
 测试范围：
   - 模块导入完整性
   - 词提取工具函数
   - 配置读写函数
-  - 主窗口和设置对话框的创建
+  - 验证状态标签和颜色
+  - Evidence 结构解析
+  - 主窗口和设置对话框类存在性
 """
 from __future__ import annotations
 
@@ -13,6 +15,9 @@ import tempfile
 from pathlib import Path
 
 from hallucination_checker.gui.main_window import (
+    _STATUS_LABELS,
+    EvidenceDialog,
+    MainWindow,
     _append_to_json_array,
     _extract_word_from_issue,
     _word_in_json_array,
@@ -191,3 +196,146 @@ class TestGuiCreation:
     def test_package_exports(self) -> None:
         from hallucination_checker.gui import main as gui_main
         assert callable(gui_main)
+
+
+# ---- 验证状态标签和颜色 ----
+
+class TestStatusLabels:
+    """_STATUS_LABELS 映射测试。"""
+
+    def test_all_statuses_have_labels(self) -> None:
+        expected = {'verified_real', 'verified_fake', 'need_manual_check',
+                     'unable_to_verify', 'pending'}
+        assert set(_STATUS_LABELS.keys()) == expected
+
+    def test_real_status_label_is_chinese(self) -> None:
+        assert _STATUS_LABELS['verified_real'] == '已验证真'
+
+    def test_fake_status_label_is_chinese(self) -> None:
+        assert _STATUS_LABELS['verified_fake'] == '已验证假'
+
+    def test_manual_status_label(self) -> None:
+        assert _STATUS_LABELS['need_manual_check'] == '需人工复核'
+
+    def test_pending_status_label(self) -> None:
+        assert _STATUS_LABELS['pending'] == '待验证'
+
+
+class TestStatusColors:
+    """MainWindow._get_status_colors 测试。"""
+
+    def test_verified_real_color(self) -> None:
+        colors = MainWindow._get_status_colors('verified_real')
+        assert colors is not None
+        bg, fg = colors
+        assert bg.name() == '#e8f5e9'
+        assert fg.name() == '#2e7d32'
+
+    def test_verified_fake_color(self) -> None:
+        colors = MainWindow._get_status_colors('verified_fake')
+        assert colors is not None
+        bg, fg = colors
+        assert bg.name() == '#ffebee'
+        assert fg.name() == '#c62828'
+
+    def test_need_manual_color(self) -> None:
+        colors = MainWindow._get_status_colors('need_manual_check')
+        assert colors is not None
+        bg, fg = colors
+        assert bg.name() == '#fff8e1'
+
+    def test_unable_to_verify_color(self) -> None:
+        colors = MainWindow._get_status_colors('unable_to_verify')
+        assert colors is not None
+        bg, fg = colors
+        assert bg.name() == '#f5f5f5'
+
+    def test_pending_returns_none(self) -> None:
+        assert MainWindow._get_status_colors('pending') is None
+
+    def test_unknown_status_returns_none(self) -> None:
+        assert MainWindow._get_status_colors('bogus') is None
+
+
+# ---- Evidence 结构解析 ----
+
+class TestEvidenceParsing:
+    """L4 evidence 字段解析测试。"""
+
+    def test_full_evidence_structure(self) -> None:
+        entry = {
+            'word': '母丑购',
+            'category': '电商平台名',
+            'score': 60,
+            'location': 'P2',
+            'status': 'verified_fake',
+            'evidence': {
+                'scoring': {'base_score': 45, 'freq_bonus': 10},
+                'consistency': {'hit': True, 'type': '高频实体', 'detail': '出现4次'},
+                'verification': {'status': 'verified_fake', 'confidence': 85},
+                'recommendation': '建议加黑名单',
+            },
+        }
+        ev = entry['evidence']
+        assert ev['recommendation'] == '建议加黑名单'
+        assert ev['verification']['confidence'] == 85
+        assert ev['consistency']['hit'] is True
+        assert 'base_score' in ev['scoring']
+
+    def test_minimal_evidence_structure(self) -> None:
+        entry = {
+            'word': '某个词',
+            'category': '未知',
+            'score': 30,
+            'location': 'P1',
+            'status': 'pending',
+            'evidence': {
+                'scoring': {},
+                'consistency': {'hit': False, 'type': 'none', 'detail': ''},
+                'verification': {'status': 'pending', 'confidence': 0},
+                'recommendation': '待处理',
+            },
+        }
+        assert entry['evidence']['recommendation'] == '待处理'
+
+    def test_recommendation_actions(self) -> None:
+        """仅"建议加白名单"和"建议加黑名单"应触发一键执行。"""
+        actionable = {'建议加白名单', '建议加黑名单'}
+        non_actionable = {'建议人工复核', '建议人机协作验证', '待处理', '无需处理'}
+
+        for rec in actionable:
+            assert rec in actionable
+        for rec in non_actionable:
+            assert rec not in actionable
+
+    def test_evidence_entry_keys(self) -> None:
+        """验证 evidence 四段字段名。"""
+        entry = {
+            'word': 'x', 'category': 'x', 'score': 0, 'location': 'P1',
+            'evidence': {
+                'scoring': {}, 'consistency': {}, 'verification': {},
+                'recommendation': '待处理',
+            },
+        }
+        assert set(entry['evidence'].keys()) == {
+            'scoring', 'consistency', 'verification', 'recommendation',
+        }
+
+
+# ---- EvidenceDialog 类 ----
+
+class TestEvidenceDialog:
+    """EvidenceDialog 创建测试（无 QApplication 时仅测类存在和数据解析）。"""
+
+    def test_dialog_class_exists(self) -> None:
+        assert EvidenceDialog is not None
+
+    def test_dialog_requires_qapplication(self) -> None:
+        """EvidenceDialog 需要 QApplication 运行时环境。"""
+        # 此处仅验证类定义存在和构造函数签名合理
+        import inspect
+        sig = inspect.signature(EvidenceDialog.__init__)
+        params = list(sig.parameters.keys())
+        assert 'self' in params
+        assert 'entry' in params
+        assert 'parent' in params

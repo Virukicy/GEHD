@@ -10,7 +10,9 @@ from typing import Any
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QCheckBox,
     QDialog,
+    QDoubleSpinBox,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
@@ -231,6 +233,18 @@ class SettingsDialog(QDialog):
         self._deep_search_threshold.setToolTip('≥此分的候选使用深度搜索（多引擎交叉验证）')
         l4_form.addRow('深度搜索阈值：', self._deep_search_threshold)
 
+        self._l4_auto_verify = QCheckBox('扫描时自动执行联网核查')
+        self._l4_auto_verify.setToolTip('开启后，扫描时同步对候选词执行 Web 搜索验证')
+        l4_form.addRow('自动核查：', self._l4_auto_verify)
+
+        self._l4_search_timeout = QDoubleSpinBox()
+        self._l4_search_timeout.setRange(1.0, 30.0)
+        self._l4_search_timeout.setDecimals(1)
+        self._l4_search_timeout.setSingleStep(0.5)
+        self._l4_search_timeout.setSuffix(' 秒')
+        self._l4_search_timeout.setToolTip('联网搜索超时时间（秒）')
+        l4_form.addRow('搜索超时：', self._l4_search_timeout)
+
         layout.addWidget(l4_group)
 
         # 文本处理参数组
@@ -304,6 +318,8 @@ class SettingsDialog(QDialog):
 
         l4 = data.get('l4', {})
         self._deep_search_threshold.setValue(l4.get('deep_search_threshold', 55))
+        self._l4_auto_verify.setChecked(l4.get('auto_verify', False))
+        self._l4_search_timeout.setValue(float(l4.get('search_timeout', 5.0)))
 
         text_proc = data.get('text_processing', {})
         self._context_window.setValue(text_proc.get('context_window_chars', 10))
@@ -338,6 +354,8 @@ class SettingsDialog(QDialog):
 
         l4 = data.setdefault('l4', {})
         l4['deep_search_threshold'] = self._deep_search_threshold.value()
+        l4['auto_verify'] = self._l4_auto_verify.isChecked()
+        l4['search_timeout'] = self._l4_search_timeout.value()
 
         text_proc = data.setdefault('text_processing', {})
         text_proc['context_window_chars'] = self._context_window.value()
