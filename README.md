@@ -82,9 +82,10 @@ python -m hallucination_checker document.docx --verify
 
 - [x] **Iteration 1 完成** — 标准化项目结构、模块拆分、外部化配置
 - [x] **Iteration 2 完成** — 类型安全/mypy/Ruff/logging/异常处理/45测试/85%覆盖率
-- [ ] **Iteration 3** — 核心壁垒（联网核查、证据链）
+- [x] **Iteration 3 进行中 (2/5)** — P2-1 声明提取 + P2-2 适配层补全
+- [ ] **Iteration 3 完成** — P2-3 联网核查 + P2-4 证据链 + P2-5 多模型
 
-当前版本：**v0.2.0**
+当前版本：**v0.3.0-alpha**
 
 ---
 

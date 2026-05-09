@@ -3,6 +3,23 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/) (SemVer 2.0)。
 
+## [0.3.0-alpha] — 2026-05-09
+
+### Iteration 3 进展 (2/5)
+
+- **P2-1**: L3.7 声明提取模块 — 6类声明性构造检测，semantic doc 0→5 issues
+- **P2-2**: 适配层补全 — from_text / from_markdown 工厂方法
+- 配置外置化扫尾 — L3 硬编码列表迁入 thresholds.json (l3_behavior)
+- 协作协议升级 — 二元→四方（引擎 + UI + QA + PM）
+- GUI 集成 — PySide6 桌面应用交付
+
+### 质量指标
+- 测试: **76/76**
+- ruff: **零错误**
+- M2 验收: semantic ≥1 ✅, benchmark 0 issues ✅
+
+---
+
 ## [0.2.0] — 2026-05-09
 
 ### Iteration 2 完成 — 工程化提升
