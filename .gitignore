@@ -53,3 +53,4 @@ GEHD_v36_工业化评审报告.md
 *.log
 cache/
 output/
+coverage.json
