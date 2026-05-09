@@ -121,8 +121,23 @@ UI 组现在可写：
 
 ```python
 from hallucination_checker.io.document_text import DocumentText, TextPart
+from hallucination_checker.engine.checker import gehd_check
+from hallucination_checker.engine.config import load_config
 
+config = load_config()
 text = DocumentText.from_docx(filepath)
+issues, warnings, stats, l4_queue = gehd_check(text, config)
 # text.parts[0].display → "段落 1"（可直接展示）
 # text.full_text         → 拼接全文
 ```
+
+---
+
+## 九、修订历史
+
+| 日期 | 变更 |
+|------|------|
+| 2026-05-09 | 初版冻结（frozen-1） |
+| 2026-05-09 | UI 组三点确认：display 字段、输出稳定、最小交付 |
+| 2026-05-09 | gehd_check() 主入口切换到 DocumentText |
+| 2026-05-09 | N8 修复：DocumentText 加 frozen=True，parts list→tuple |

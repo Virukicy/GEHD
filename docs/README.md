@@ -7,6 +7,8 @@
 | [architecture.md](./architecture.md) | 架构全景：五层引擎数据流、模块依赖、配置系统、评分维度 | 了解项目结构 |
 | [development.md](./development.md) | 开发指南：环境搭建、运行测试、代码规范、修改场景、技术债务 | 开始写代码 |
 | [ai-guide.md](./ai-guide.md) | AI 代理操作指南：自迭代循环、配置修改、故障排查 | AI 助手操作 GEHD |
+| [p2-2-interface.md](./p2-2-interface.md) | P2-2 适配层接口设计（冻结）：DocumentText 数据结构、引擎入口、输出承诺 | UI 组开发 |
+| [COLLABORATION.md](./COLLABORATION.md) | 多智能体协作协议：文件域划分、Git 工作流、冲突处理 | 双 AI 协作 |
 
 ## 项目根目录文档
 
