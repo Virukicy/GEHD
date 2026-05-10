@@ -3,6 +3,19 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/) (SemVer 2.0)。
 
+## [0.3.1] — 2026-05-10
+
+### 修复
+- GUI 设置窗口无法打开（`_settings_dialog = None` + `hasattr` 守卫缺失）
+- GUI 联网核查闪退（同步 HTTP 阻塞主线程 → macOS 杀进程）
+
+### 新增
+- GUI 多模型交叉校验入口（`gehd_cross_validate()` 接入）
+- 主窗口自动核查状态提示（"联网核查: 已启用/已关闭"）
+- 协作协议 7.6 执行证据标准
+
+---
+
 ## [0.3.0-alpha] — 2026-05-09
 
 ### Iteration 3 完成
