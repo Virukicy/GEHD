@@ -1,7 +1,7 @@
 # GEHD 架构文档
 
-> **版本**：v0.3.1  
-> **最后更新**：2026-05-10  
+> **版本**：v0.3.0-beta  
+> **最后更新**：2026-05-11  
 > **目标读者**：AI 助手（Gemini/Claude/GPT/DeepSeek）或真人开发者  
 > **阅读顺序**：本文 → [development.md](./development.md) → [ai-guide.md](./ai-guide.md)（AI 用户）→ 代码
 
