@@ -1,8 +1,8 @@
 # GEHD — 文档幻觉核查工具
 
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/version-0.3.0-informational)](https://github.com/Virukicy/GEHD)
-[![Tests](https://img.shields.io/badge/tests-125%2F125-brightgreen)](tests/)
+[![Version](https://img.shields.io/badge/version-0.4.0--alpha-informational)](https://github.com/Virukicy/GEHD)
+[![Tests](https://img.shields.io/badge/tests-127%2F127-brightgreen)](tests/)
 
 基于**纯规则引擎**的轻量级文档幻觉核查工具。输入 `.docx` 文档，自动检测 AI 生成内容中可能被编造的专有名词、统计数据、引述和时间线。
 
@@ -71,11 +71,10 @@ python -m hallucination_checker document.docx --verify
 
 ## 架构
 
-六层规则引擎，全链路闭环：
+可编排管道架构，LLM + 搜索双适配层：
 
 ```
-📄 .docx → L1 白名单 → L2 黑名单 → L2.5 非实体
-         → L3 启发式评分 → L3.6 一致性 → L3.7 声明提取 → L4 验证队列 → 📊 报告
+📄 文件 → PipelineContext → L1-L4 规则引擎 → SearchAdapter → LLMAdapter → 📊 报告
 ```
 
 详细架构请阅读 [docs/architecture.md](./docs/architecture.md)。
@@ -88,7 +87,7 @@ python -m hallucination_checker document.docx --verify
 - [x] **Iteration 2 完成** — 类型安全/mypy/Ruff/logging/异常处理/125测试/85%覆盖率
 - [x] **Iteration 3 完成** — P2-1 声明提取 + P2-2 适配层 + P2-3 联网核查 + P2-4 证据链 + P2-5 多模型交叉校验 + GUI 桌面应用
 
-当前版本：**v0.3.0**
+当前版本：**v0.4.0-alpha**
 
 ---
 
