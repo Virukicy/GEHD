@@ -197,6 +197,7 @@ class EvidenceDialog(QDialog):
         super().__init__(parent)
         word = entry.get('word', '?')
         self.setWindowTitle(f'证据链 — {word}')
+        safe_word = _html.escape(word)
         self.setMinimumSize(480, 380)
         self.resize(520, 420)
 
@@ -214,7 +215,7 @@ class EvidenceDialog(QDialog):
         conf = verification.get('confidence', 0)
 
         html_parts: list[str] = [
-            f'<h2>{word}</h2>', '<hr>',
+            f'<h2>{safe_word}</h2>', '<hr>',
             '<h3>评分 (Scoring)</h3>', '<table>',
         ]
         for k, v in sorted(scoring.items()):
