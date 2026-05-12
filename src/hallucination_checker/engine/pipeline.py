@@ -61,6 +61,11 @@ def run_pipeline(
         from .llm.pre_filter import llm_pre_filter
         context = llm_pre_filter(context, llm, config)
 
+    # LLM 后置语义验证（v0.4.0-rc）
+    if pipeline_cfg.get('llm_post', False) and llm is not None:
+        from .llm.post_filter import llm_post_filter
+        context = llm_post_filter(context, llm, config)
+
     return context
 
 

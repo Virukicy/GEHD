@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gehd"
-version = "0.4.0-beta"
+version = "0.4.0-rc"
 description = "GEHD — 基于多源交叉校验的轻量级文档幻觉核查工具"
 readme = "README.md"
 license = {text = "待定"}
