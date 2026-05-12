@@ -23,14 +23,17 @@ class LLMAdapter(ABC):
 class OpenAIAdapter(LLMAdapter):
     """OpenAI 兼容 API 适配器。"""
 
-    def __init__(self, api_key: str, base_url: str = 'https://api.openai.com/v1'):
+    def __init__(self, api_key: str, base_url: str = 'https://api.openai.com/v1',
+                 model: str = 'deepseek-v4-flash'):
         self._api_key = api_key
         self._base_url = base_url.rstrip('/')
+        self._model = model
 
     def chat(
-        self, messages: list[dict], model: str = 'gpt-4o', temperature: float = 0.0
+        self, messages: list[dict], model: str = '', temperature: float = 0.0
     ) -> str:
         """调用 OpenAI 兼容聊天接口。"""
+        model = model or self._model
         try:
             import httpx
         except ImportError:
@@ -80,7 +83,8 @@ def create_llm_adapter_from_config() -> OpenAIAdapter | None:
         return None
 
     base_url = llm_cfg.get('base_url', 'https://api.openai.com/v1')
-    return OpenAIAdapter(api_key=api_key, base_url=base_url)
+    model = llm_cfg.get('model', 'deepseek-v4-flash')
+    return OpenAIAdapter(api_key=api_key, base_url=base_url, model=model)
 
 
 def _load_json(path: Path) -> dict:
