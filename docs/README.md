@@ -9,6 +9,7 @@
 | [ai-guide.md](./ai-guide.md) | AI 代理操作指南：自迭代循环、配置修改、故障排查 | AI 助手操作 GEHD |
 | [p2-2-interface.md](./p2-2-interface.md) | P2-2 适配层接口设计（冻结）：DocumentText 数据结构、引擎入口、输出承诺 | U 开发 |
 | [COLLABORATION.md](./COLLABORATION.md) | 多智能体协作协议：五方协作结构、文件域划分、Git 工作流、冲突处理 | 参与协作 |
+| [plan.md](./plan.md) | 开发计划与里程碑路线图（S 独占维护） | 了解规划 |
 
 ## 项目根目录文档
 

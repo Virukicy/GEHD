@@ -47,6 +47,7 @@ tests/
 └── conftest.py          ← 🔵 E（改之前喊话）
 
 docs/                    ← 📗 D 独占
+docs/plan.md              ← 🔷 S 独占维护（D 创建后移交，不得自行修改）
 README.md                ← 📗 D 独占
 CHANGELOG.md             ← 🔵 E 自行维护
 pyproject.toml           ← 🔵 E（版本号等）
@@ -145,6 +146,7 @@ git diff --stat          ← 是否踩到其他组的文件域？
 | 测试（引擎） | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | 测试（GUI） | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | 文档 (docs/) | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| `docs/plan.md` 维护 | ❌ | ❌ | ❌ | ❌（仅首次创建） | ❌ | ✅ |
 | README.md | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
 | CHANGELOG.md | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | pyproject.toml | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
