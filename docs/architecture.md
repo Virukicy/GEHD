@@ -1,6 +1,6 @@
 # GEHD 架构文档
 
-> **版本**：v0.4.0-beta  
+> **版本**：v0.4.0  
 > **最后更新**：2026-05-13  
 > **目标读者**：AI 助手（Gemini/Claude/GPT/DeepSeek）或真人开发者  
 > **阅读顺序**：本文 → [development.md](./development.md) → [ai-guide.md](./ai-guide.md)（AI 用户）→ 代码
@@ -34,7 +34,7 @@ GEHD项目/
 │   ├── engine/                 # === 核心引擎层 ===
 │   │   ├── config.py           # 全局配置（阈值、白/黑名单、正则模式）
 │   │   ├── checker.py          # 主编排器：组合 L1→L4 全流程
-│   │   ├── pipeline.py         # 管道编排器（PipelineContext + run_pipeline）
+│   │   ├── pipeline.py         # 管道编排器（PipelineContext + run_pipeline，含 LLM 前/后置调度）
 │   │   ├── extractors/
 │   │   │   └── text_extractor.py  # 从 docx 提取结构化文本块
 │   │   ├── layers/             # === 六层规则引擎 ===
@@ -48,7 +48,8 @@ GEHD项目/
 │   │   │   └── l4_web_verify.py    # L4: 联网自动核查
 │   │   ├── llm/                # === LLM 适配层 ===
 │   │   │   ├── adapter.py      # LLMAdapter + OpenAIAdapter
-│   │   │   └── pre_filter.py   # 前置过滤器：批量去噪，19候选压缩至≤8
+│   │   │   ├── pre_filter.py   # 前置过滤器：批量去噪，压缩候选
+│   │   │   └── post_filter.py  # 后置判断：语义深度验证（H01 纠正）
 │   │   ├── search/             # === 搜索适配层 ===
 │   │   │   └── adapter.py      # SearchAdapter 抽象 + TavilyAdapter + DuckDuckGoAdapter
 │   │   └── scorers/            # 评分逻辑（预留，当前在 l3_heuristic.py）
@@ -254,6 +255,7 @@ config/*.json（外部化）  >  engine/config.py（内置默认值）
 
 | 版本 | 日期 | 关键变更 |
 |------|------|------|
+| **v0.4.0** | 2026-05-13 | 智能管道完整：LLM 前/后置 + GUI 管道选项卡 + S 组战略 |
 | **v0.4.0-beta** | 2026-05-13 | LLM 前置过滤器 + GUI 管道选项卡 + 配置自动迁移 |
 | **v0.4.0-alpha** | 2026-05-13 | 管道编排器 + LLM 适配层 + SearchAdapter 抽象 + 配置三分层 |
 | **v0.3.0** | 2026-05-12 | P2-1~P2-5 全功能 + GUI 桌面应用 + 六方协作 |
