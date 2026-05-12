@@ -68,9 +68,16 @@ def llm_post_filter(
 
         try:
             reply = llm.chat(messages, temperature=0.0)
-            verdict = json.loads(reply)
-        except (json.JSONDecodeError, ValueError, OSError):
-            continue
+            verdict = _safe_parse_json(reply)
+        except (json.JSONDecodeError, ValueError):
+            try:
+                retry = llm.chat([
+                    *messages,
+                    {'role': 'user', 'content': '请严格只输出 JSON 对象，不要添加任何解释文字、markdown 标记。'},
+                ], temperature=0.0)
+                verdict = _safe_parse_json(retry)
+            except (json.JSONDecodeError, ValueError, OSError):
+                continue
 
         if not verdict.get('consistent', True):
             old_status = entity['status']
@@ -98,3 +105,17 @@ def llm_post_filter(
     context['decision_log'] = decision
 
     return context
+
+
+def _safe_parse_json(raw: str) -> dict:
+    """清理 LLM 返回文本中的 markdown 包裹，提取纯 JSON。"""
+    import json
+    import re
+
+    text = raw.strip()
+    text = re.sub(r'^```(?:json)?\s*|\s*```$', '', text)
+    start = text.find('{')
+    end = text.rfind('}')
+    if start != -1 and end > start:
+        text = text[start:end + 1]
+    return json.loads(text)

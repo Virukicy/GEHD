@@ -61,12 +61,21 @@ def llm_pre_filter(
     try:
         reply = llm.chat(messages, temperature=0.0)
         import json
-        verdict = json.loads(reply)
+        verdict = _safe_parse_json(reply)
         keep_idx = set(verdict.get('keep', []))
     except (json.JSONDecodeError, ValueError, KeyError, OSError):
-        # LLM 调用失败 → 保留全部候选（降级安全）
-        context['decision_log'][-1]['filtered_count'] = len(candidates)
-        return context
+        # 解析失败 → 重试一次
+        try:
+            retry = llm.chat([
+                *messages,
+                {'role': 'user', 'content': '请严格只输出 JSON 对象，不要添加任何解释文字、markdown 标记。'},
+            ], temperature=0.0)
+            verdict = _safe_parse_json(retry)
+            keep_idx = set(verdict.get('keep', []))
+        except (json.JSONDecodeError, ValueError, KeyError, OSError):
+            # 重试仍失败 → 保留全部候选（降级安全）
+            context['decision_log'][-1]['filtered_count'] = len(candidates)
+            return context
 
     # 分拣
     filtered = [candidates[i - 1] for i in keep_idx if 1 <= i <= len(candidates)]
@@ -78,3 +87,17 @@ def llm_pre_filter(
     })
 
     return context
+
+
+def _safe_parse_json(raw: str) -> dict:
+    """清理 LLM 返回文本中的 markdown 包裹，提取纯 JSON。"""
+    import json
+    import re
+
+    text = raw.strip()
+    text = re.sub(r'^```(?:json)?\s*|\s*```$', '', text)
+    start = text.find('{')
+    end = text.rfind('}')
+    if start != -1 and end > start:
+        text = text[start:end + 1]
+    return json.loads(text)
