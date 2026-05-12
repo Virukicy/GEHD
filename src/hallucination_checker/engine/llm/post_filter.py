@@ -40,7 +40,8 @@ def llm_post_filter(
         category = entity.get('category', '')
         context_text = entity.get('context', '')
         result = entity.get('search_result', {})
-        snippets = result.get('snippets', [])[:3]
+        # 兼容两种字段路径: search_result.snippets 或 entity.snippets
+        snippets = result.get('snippets', entity.get('snippets', []))[:3]
 
         if not snippets or not word:
             continue

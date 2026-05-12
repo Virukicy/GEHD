@@ -53,7 +53,7 @@ def run_pipeline(
         warnings=warnings,
         stats=stats,
         l4_queue=l4_queue,
-        candidates=[],  # v0.5.0 populate
+        candidates=l4_queue if l4_queue else [],  # v0.4.0-rc: 候选来自 L4 队列
         decision_log=[],
     )
 
