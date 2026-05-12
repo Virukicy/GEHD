@@ -49,5 +49,5 @@ class OpenAIAdapter(LLMAdapter):
             timeout=60,
         )
         resp.raise_for_status()
-        data = resp.json()
-        return data['choices'][0]['message']['content']
+        data: dict = resp.json()
+        return str(data['choices'][0]['message']['content'])
