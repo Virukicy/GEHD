@@ -228,21 +228,21 @@ class TestStatusColors:
         colors = MainWindow._get_status_colors('verified_real')
         assert colors is not None
         bg, fg = colors
-        assert bg.name() == '#e8f5e9'
+        assert bg.name() == '#c8e6c9'
         assert fg.name() == '#2e7d32'
 
     def test_verified_fake_color(self) -> None:
         colors = MainWindow._get_status_colors('verified_fake')
         assert colors is not None
         bg, fg = colors
-        assert bg.name() == '#ffebee'
+        assert bg.name() == '#ffcdd2'
         assert fg.name() == '#c62828'
 
     def test_need_manual_color(self) -> None:
         colors = MainWindow._get_status_colors('need_manual_check')
         assert colors is not None
         bg, fg = colors
-        assert bg.name() == '#fff8e1'
+        assert bg.name() == '#ffe0b2'
 
     def test_unable_to_verify_color(self) -> None:
         colors = MainWindow._get_status_colors('unable_to_verify')

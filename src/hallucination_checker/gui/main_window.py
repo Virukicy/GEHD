@@ -74,28 +74,24 @@ _FACTORY_MAP: dict[str, Any] = {
     '.pptx': DocumentText.from_pptx,
 }
 
-# ---- 颜色常量 ----
-_COLOR_ISSUE_BG = QColor('#FFE0E0')
-_COLOR_ISSUE_FG = QColor('#B71C1C')
-_COLOR_WARNING_BG = QColor('#FFF3E0')
-_COLOR_WARNING_FG = QColor('#E65100')
-_COLOR_L4_HIGH_BG = QColor('#FFE0E0')
-_COLOR_L4_MED_BG = QColor('#FFF3E0')
-
-# L4 验证状态颜色
-_COLOR_VERIFIED_REAL_BG = QColor('#E8F5E9')       # 绿
-_COLOR_VERIFIED_REAL_FG = QColor('#2E7D32')
-_COLOR_VERIFIED_FAKE_BG = QColor('#FFEBEE')       # 红
-_COLOR_VERIFIED_FAKE_FG = QColor('#C62828')
-_COLOR_NEED_MANUAL_BG = QColor('#FFF8E1')          # 琥珀
-_COLOR_NEED_MANUAL_FG = QColor('#E65100')
-_COLOR_UNABLE_BG = QColor('#F5F5F5')              # 灰
-_COLOR_UNABLE_FG = QColor('#757575')
-
-# L4 交叉校验共识颜色
-_COLOR_STRONG_CONSENSUS_BG = QColor('#C8E6C9')    # 深绿
-_COLOR_WEAK_CONSENSUS_BG = QColor('#E8F5E9')      # 浅绿
-_COLOR_DIVERGENT_BG = QColor('#F5F5F5')           # 灰
+# ---- 统一色彩体系 ----
+# 规则：同一含义在所有视图中使用同一颜色
+_COLOR_ISSUE = QColor('#C62828')                 # 红: 高危/确认虚构
+_COLOR_ISSUE_BG = QColor('#FFCDD2')              # 红底
+_COLOR_WARNING = QColor('#E65100')               # 橙: 中危/待核查
+_COLOR_WARNING_BG = QColor('#FFE0B2')            # 橙底
+_COLOR_LOW = QColor('#F9A825')                   # 黄: 低危/待验证
+_COLOR_LOW_BG = QColor('#FFF9C4')                # 黄底
+_COLOR_VERIFIED = QColor('#2E7D32')              # 绿: 已验证真
+_COLOR_VERIFIED_BG = QColor('#C8E6C9')           # 绿底
+_COLOR_UNCERTAIN = QColor('#757575')             # 灰: 无法验证/分歧
+_COLOR_UNCERTAIN_BG = QColor('#F5F5F5')          # 灰底
+_COLOR_DECLARATION = QColor('#6A1B9A')           # 紫: 声明提取(L3.7)
+_COLOR_DECLARATION_BG = QColor('#E1BEE7')        # 紫底
+_COLOR_CONSENSUS_STRONG = QColor('#1B5E20')      # 深绿: 强共识
+_COLOR_CONSENSUS_STRONG_BG = QColor('#A5D6A7')   # 深绿底
+_COLOR_CONSENSUS_WEAK = QColor('#33691E')        # 浅绿: 弱共识
+_COLOR_CONSENSUS_WEAK_BG = QColor('#C8E6C9')     # 浅绿底
 
 # L4 状态 → 中文标签
 _STATUS_LABELS: dict[str, str] = {
@@ -464,7 +460,35 @@ class MainWindow(QMainWindow):
 
         layout.addWidget(self._result_tabs, 1)
 
-    # ---- 状态栏 ----
+        # 全局图例条
+        legend = QFrame()
+        legend.setStyleSheet(
+            'QFrame { background: #FAFAFA; border: 1px solid #E0E0E0; border-radius: 4px; padding: 4px 12px; }'
+        )
+        legend_layout = QHBoxLayout(legend)
+        legend_layout.setContentsMargins(8, 2, 8, 2)
+        legend_layout.setSpacing(16)
+        for color, label in [
+            (_COLOR_ISSUE_BG, '高危'),
+            (_COLOR_WARNING_BG, '中危'),
+            (_COLOR_LOW_BG, '低危'),
+            (_COLOR_VERIFIED_BG, '已验证'),
+            (_COLOR_UNCERTAIN_BG, '无法验证'),
+            (_COLOR_DECLARATION_BG, '声明'),
+        ]:
+            swatch = QLabel('  ')
+            swatch.setFixedSize(18, 18)
+            swatch.setStyleSheet(
+                f'background-color: {color.name()}; border-radius: 2px; border: 1px solid #CCC;'
+            )
+            text = QLabel(label)
+            text.setStyleSheet('border: none; background: transparent; font-size: 11px; color: #555;')
+            legend_layout.addWidget(swatch)
+            legend_layout.addWidget(text)
+        legend_layout.addStretch()
+        layout.addWidget(legend)
+
+        # ---- 状态栏 ----
 
     def _setup_statusbar(self) -> None:
         self._statusbar = QStatusBar()
@@ -623,14 +647,14 @@ class MainWindow(QMainWindow):
         for text in issues:
             item = QListWidgetItem(text)
             item.setBackground(_COLOR_ISSUE_BG)
-            item.setForeground(_COLOR_ISSUE_FG)
+            item.setForeground(_COLOR_ISSUE)
             item.setData(Qt.ItemDataRole.UserRole, text)
             self._issues_list.addItem(item)
 
         for text in warnings:
             item = QListWidgetItem(text)
             item.setBackground(_COLOR_WARNING_BG)
-            item.setForeground(_COLOR_WARNING_FG)
+            item.setForeground(_COLOR_WARNING)
             item.setData(Qt.ItemDataRole.UserRole, text)
             self._warnings_list.addItem(item)
 
@@ -681,12 +705,12 @@ class MainWindow(QMainWindow):
                 for col in range(5):
                     cell = self._l4_table.item(row, col)
                     if cell:
-                        cell.setBackground(_COLOR_L4_HIGH_BG)
+                        cell.setBackground(_COLOR_ISSUE_BG)
             elif score >= med_th:
                 for col in range(5):
                     cell = self._l4_table.item(row, col)
                     if cell:
-                        cell.setBackground(_COLOR_L4_MED_BG)
+                        cell.setBackground(_COLOR_WARNING_BG)
 
         self._result_tabs.setTabText(0, f'问题 ({len(issues)})')
         self._result_tabs.setTabText(1, f'警告 ({len(warnings)})')
@@ -697,26 +721,26 @@ class MainWindow(QMainWindow):
 
     @staticmethod
     def _get_status_colors(status: str) -> tuple[QColor, QColor] | None:
-        """返回 (bg, fg) 或 None（无特殊颜色）。"""
+        """返回 (bg, fg) 或 None。"""
         if status == 'verified_real':
-            return (_COLOR_VERIFIED_REAL_BG, _COLOR_VERIFIED_REAL_FG)
+            return (_COLOR_VERIFIED_BG, _COLOR_VERIFIED)
         if status == 'verified_fake':
-            return (_COLOR_VERIFIED_FAKE_BG, _COLOR_VERIFIED_FAKE_FG)
+            return (_COLOR_ISSUE_BG, _COLOR_ISSUE)
         if status == 'need_manual_check':
-            return (_COLOR_NEED_MANUAL_BG, _COLOR_NEED_MANUAL_FG)
+            return (_COLOR_WARNING_BG, _COLOR_WARNING)
         if status == 'unable_to_verify':
-            return (_COLOR_UNABLE_BG, _COLOR_UNABLE_FG)
+            return (_COLOR_UNCERTAIN_BG, _COLOR_UNCERTAIN)
         return None
 
     @staticmethod
     def _get_consensus_colors(level: str) -> tuple[QColor, QColor] | None:
         """返回 (bg, fg) 或 None。"""
         if level == 'strong':
-            return (_COLOR_STRONG_CONSENSUS_BG, QColor('#1B5E20'))
+            return (_COLOR_CONSENSUS_STRONG_BG, _COLOR_CONSENSUS_STRONG)
         if level == 'weak':
-            return (_COLOR_WEAK_CONSENSUS_BG, QColor('#33691E'))
+            return (_COLOR_CONSENSUS_WEAK_BG, _COLOR_CONSENSUS_WEAK)
         if level == 'divergent':
-            return (_COLOR_DIVERGENT_BG, QColor('#757575'))
+            return (_COLOR_UNCERTAIN_BG, _COLOR_UNCERTAIN)
         return None
 
     # ---- L4 行双击 → evidence 详情 ----
@@ -839,23 +863,18 @@ class MainWindow(QMainWindow):
             if loc_highlights:
                 # 按词长降序，长词优先匹配
                 for word, severity in sorted(loc_highlights, key=lambda x: -len(x[0])):
-                    css_class = {
-                        'issue': 'hl-issue',
-                        'warning': 'hl-warning',
-                        'verified_real': 'hl-real',
-                        'l4_pending': 'hl-l4',
-                    }.get(severity, 'hl-info')
-                    title_attr = {
-                        'issue': '高危',
-                        'warning': '中危',
-                        'verified_real': '已验证真',
-                        'l4_pending': 'L4待验证',
-                    }.get(severity, '')
-                    escaped = word.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
+                    css_class, title_attr = {
+                        'issue': ('hl-issue', '高危'),
+                        'warning': ('hl-warning', '中危'),
+                        'verified_real': ('hl-real', '已验证真'),
+                        'l4_pending': ('hl-l4', '待验证'),
+                    }.get(severity, ('hl-info', ''))
+                    escaped = word.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
                     if escaped in part_text:
                         part_text = part_text.replace(
                             escaped,
-                            f'<span class="{css_class}" title="{title_attr}">{escaped}</span>'
+                            f'<span class="{css_class}" title="{title_attr}">{escaped}</span>',
+                            1  # 每段只替换首次出现
                         )
 
             loc_tag = f' <small style="color:#999;">[{display_label}]</small>'
@@ -869,20 +888,11 @@ class MainWindow(QMainWindow):
   .loc-label {{ color: #aaa; font-size: 12px; margin-right: 8px; }}
   .hl-issue {{ background-color: #FFCDD2; padding: 1px 3px; border-radius: 2px; cursor: pointer; }}
   .hl-warning {{ background-color: #FFE0B2; padding: 1px 3px; border-radius: 2px; cursor: pointer; }}
-  .hl-real {{ background-color: #C8E6C9; padding: 1px 3px; border-radius: 2px; text-decoration: line-through; }}
+  .hl-real {{ background-color: #C8E6C9; padding: 1px 3px; border-radius: 2px; text-decoration: line-through; cursor: pointer; }}
   .hl-l4 {{ background-color: #E1BEE7; padding: 1px 3px; border-radius: 2px; cursor: pointer; }}
   .hl-info {{ background-color: #F5F5F5; padding: 1px 3px; }}
-  .legend {{ position: fixed; right: 20px; top: 20px; background: #FFF; border: 1px solid #DDD; border-radius: 6px; padding: 12px; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }}
-  .legend-item {{ margin: 4px 0; }}
-  .legend-swatch {{ display: inline-block; width: 14px; height: 14px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }}
   .stats-bar {{ margin-bottom: 16px; padding: 8px 12px; background: #F5F5F5; border-radius: 4px; font-size: 13px; }}
 </style></head><body>
-<div class="legend">
-  <div class="legend-item"><span class="legend-swatch" style="background:#FFCDD2"></span> 高危 (Issue)</div>
-  <div class="legend-item"><span class="legend-swatch" style="background:#FFE0B2"></span> 中危 (Warning)</div>
-  <div class="legend-item"><span class="legend-swatch" style="background:#C8E6C9"></span> 已验证真</div>
-  <div class="legend-item"><span class="legend-swatch" style="background:#E1BEE7"></span> L4 待验证</div>
-</div>
 <div class="stats-bar">
   问题: {len(self._current_issues)} | 警告: {len(self._current_warnings)} | 候选: {len(self._current_l4_queue)} | 段落: {len(text.parts)}
 </div>
