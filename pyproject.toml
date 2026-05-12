@@ -35,6 +35,8 @@ dependencies = [
 gui = ["PySide6>=6.6"]
 # 联网核查（Iteration 3 使用）
 web = ["httpx>=0.27", "tavily-python"]
+# 多格式支持 (P1/P2/P3)
+formats = ["pymupdf", "python-pptx"]
 # LLM API 调用（Iteration 3 使用）
 llm = ["openai>=1.30"]
 

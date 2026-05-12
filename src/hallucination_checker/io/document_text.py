@@ -9,7 +9,7 @@ P2-2 设计（冻结）：
 冻结范围（v0.3.0 承诺）：
   - TextPart 字段名: location, text, display
   - DocumentText 字段名: parts, full_text
-  - from_docx() 签名和返回值类型
+  - 工厂方法: from_docx / from_text / from_markdown / from_html / from_jsonl / from_csv / from_pdf / from_pptx
   - gehd_check(text: DocumentText, ...) 签名（P2-2 实现）
 """
 
@@ -139,5 +139,134 @@ class DocumentText:
                     parts.append(TextPart(location=f'P-标题{loc_num}', text=block))
             else:
                 parts.append(TextPart(location=f'P-段落{loc_num}', text=block))
+
+        return cls(parts=tuple(parts))
+
+    @classmethod
+    def from_html(cls, filepath: str | Path) -> DocumentText:
+        """从 HTML 文件构造。
+
+        提取可见文本（忽略标签和 <script>/<style>），每个可见文本块一个 TextPart。
+        """
+        import re
+
+        filepath = Path(filepath)
+        with open(filepath, encoding='utf-8') as f:
+            html = f.read()
+
+        # 移除 script 和 style 内容
+        html = re.sub(r'<script[^>]*>.*?</script>', '', html, flags=re.DOTALL | re.IGNORECASE)
+        html = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.DOTALL | re.IGNORECASE)
+
+        # 提取可见文本片段
+        text = re.sub(r'<[^>]+>', '\n', html)
+        text = re.sub(r'&nbsp;', ' ', text)
+        text = re.sub(r'&[a-z]+;', ' ', text)
+
+        parts: list[TextPart] = []
+        for i, line in enumerate(text.split('\n'), 1):
+            line = line.strip()
+            if line and len(line) >= 3:
+                parts.append(TextPart(location=f'HTML-{i}', text=line))
+
+        return cls(parts=tuple(parts))
+
+    @classmethod
+    def from_jsonl(cls, filepath: str | Path) -> DocumentText:
+        """从 JSONL 文件构造。
+
+        每行一个 JSON 对象，提取 text/content/body 字段，无文本字段则用整行原文。
+        """
+        import json
+
+        filepath = Path(filepath)
+        parts: list[TextPart] = []
+        loc = 0
+
+        with open(filepath, encoding='utf-8') as f:
+            for raw in f:
+                line = raw.strip()
+                if not line:
+                    continue
+                loc += 1
+                try:
+                    obj = json.loads(line)
+                    body = obj.get('text') or obj.get('content') or obj.get('body') or line
+                except json.JSONDecodeError:
+                    body = line
+                parts.append(TextPart(location=f'JSONL-{loc}', text=str(body)))
+
+        return cls(parts=tuple(parts))
+
+    @classmethod
+    def from_csv(cls, filepath: str | Path) -> DocumentText:
+        """从 CSV 文件构造。
+
+        每行一个 TextPart，列用 ' | ' 拼接。
+        """
+        import csv
+
+        filepath = Path(filepath)
+        parts: list[TextPart] = []
+        loc = 0
+
+        with open(filepath, encoding='utf-8-sig') as f:
+            reader = csv.reader(f)
+            for row in reader:
+                loc += 1
+                line = ' | '.join(cell.strip() for cell in row if cell.strip())
+                if line:
+                    parts.append(TextPart(location=f'CSV-{loc}', text=line))
+
+        return cls(parts=tuple(parts))
+
+    @classmethod
+    def from_pdf(cls, filepath: str | Path) -> DocumentText:
+        """从 PDF 文件构造。
+
+        使用 pymupdf 逐页提取文本。pymupdf 不可用则抛 ImportError。
+        """
+        try:
+            import fitz  # pymupdf
+        except ImportError:
+            raise ImportError('pip install pymupdf 以支持 PDF 格式') from None
+
+        filepath = Path(filepath)
+        doc = fitz.open(str(filepath))
+        parts: list[TextPart] = []
+
+        for i, page in enumerate(doc, 1):
+            text = page.get_text().strip()
+            if text:
+                parts.append(TextPart(location=f'PDF-页{i}', text=text))
+        doc.close()
+
+        return cls(parts=tuple(parts))
+
+    @classmethod
+    def from_pptx(cls, filepath: str | Path) -> DocumentText:
+        """从 PPTX 文件构造。
+
+        使用 python-pptx 逐幻灯片提取文本。python-pptx 不可用则抛 ImportError。
+        """
+        try:
+            from pptx import Presentation
+        except ImportError:
+            raise ImportError('pip install python-pptx 以支持 PPTX 格式') from None
+
+        filepath = Path(filepath)
+        prs = Presentation(str(filepath))
+        parts: list[TextPart] = []
+
+        for i, slide in enumerate(prs.slides, 1):
+            texts: list[str] = []
+            for shape in slide.shapes:
+                if shape.has_text_frame:
+                    for para in shape.text_frame.paragraphs:
+                        t = para.text.strip()
+                        if t:
+                            texts.append(t)
+            if texts:
+                parts.append(TextPart(location=f'PPTX-幻灯片{i}', text='\n'.join(texts)))
 
         return cls(parts=tuple(parts))
