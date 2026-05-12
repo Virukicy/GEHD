@@ -448,6 +448,24 @@ class SettingsDialog(QDialog):
         items = [line.strip() for line in text.split('\n') if line.strip()]
         _write_json_array(self._blacklist_path, 'blacklist', items)
 
+    def _save_thresholds(self) -> None:
+        data = self._thresholds_data or {}
+        scores = data.setdefault('scores', {})
+        scores['high_threshold'] = self._high_threshold.value()
+        scores['medium_threshold'] = self._medium_threshold.value()
+        scores['minimum'] = self._score_minimum.value()
+        scores['adjective_penalty'] = self._adjective_penalty.value()
+        scores['l35_penalty'] = self._adjective_penalty.value()
+        scores['high_freq_bonus'] = self._high_freq_bonus.value()
+        scores['med_freq_bonus'] = self._med_freq_bonus.value()
+        scores['plausible_char_penalty'] = self._plausible_penalty.value()
+
+        text_proc = data.setdefault('text_processing', {})
+        text_proc['context_window_chars'] = self._context_window.value()
+        text_proc['min_candidate_length'] = self._min_candidate_length.value()
+
+        _write_json_obj(self._thresholds_path, data)
+
     def _load_pipeline(self) -> None:
         data = _read_json_obj(_CONFIG_DIR / 'pipeline.json')
         steps = data.get('steps', {})

@@ -560,6 +560,46 @@ class MainWindow(QMainWindow):
         if layout is not None:
             layout.addWidget(self._legend)
 
+        # 管道状态栏
+        card = self.theme.color('surface.card').name()
+        border = self.theme.color('surface.border').name()
+        text_secondary = self.theme.color('text.secondary').name()
+        self._pipeline_bar = QLabel('管道: 规则引擎（本地）')
+        self._pipeline_bar.setStyleSheet(
+            f'border: 1px solid {border}; background: {card}; border-radius: 4px; '
+            f'padding: 4px 12px; font-size: 11px; color: {text_secondary};'
+        )
+        if layout is not None:
+            layout.addWidget(self._pipeline_bar)
+
+    def _refresh_pipeline_status(self) -> None:
+        """根据 pipeline.json 刷新管道状态栏。"""
+        try:
+            import json
+            path = _CONFIG_DIR / 'pipeline.json'
+            with open(path, encoding='utf-8') as f:
+                data = json.load(f)
+            steps = data.get('steps', {})
+        except (FileNotFoundError, json.JSONDecodeError):
+            steps = {}
+
+        parts: list[str] = ['管道: 规则']
+        if steps.get('cross_validate'):
+            parts.append('交叉校验')
+        if steps.get('llm_pre'):
+            parts.append('LLM前置')
+        if steps.get('web_verify'):
+            parts.append('联网核查')
+        if steps.get('llm_post'):
+            parts.append('LLM后置')
+        if steps.get('output_verify_queue'):
+            parts.append('验证队列')
+
+        if len(parts) == 1:
+            self._pipeline_bar.setText('管道: 规则引擎（本地）')
+        else:
+            self._pipeline_bar.setText(' → '.join(parts))
+
     def _rebuild_legend(self) -> None:
         for i, (token_key, _label) in enumerate([
             ('severity.issue', '高危'),
@@ -660,6 +700,7 @@ class MainWindow(QMainWindow):
 
         self._scan_btn.setEnabled(True)
         self._scan_btn.setText('重新扫描')
+        self._refresh_pipeline_status()
         issue_count = len(issues)
         self._statusbar.showMessage(
             f'扫描完成，发现 {issue_count} 个问题' if issue_count > 0 else '扫描完成，未发现问题'
