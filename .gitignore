@@ -52,6 +52,9 @@ GEHD_v36_工业化评审报告.md
 # Workspace — 各组过程文件分区（本地保留，不推 GitHub）
 workspace/
 
+# GEHD — API 密钥（绝不公开到 GitHub）
+config/secrets.json
+
 # GEHD runtime
 *.log
 cache/
