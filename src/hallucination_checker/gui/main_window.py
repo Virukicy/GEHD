@@ -1,13 +1,12 @@
-"""GEHD GUI 主窗口 — PySide6 桌面应用。v0.3.0。
+"""GEHD GUI 主窗口 — PySide6 桌面应用。v0.3.1 主题系统。
 
 功能：
-  - 加载 .docx 文件（浏览/拖拽/手打路径）
-  - 触发同步扫描（gehd_check）
-  - 展示 issues / warnings / stats / l4_queue（含验证状态和证据链）
-  - 右键标记候选词（加入白名单/黑名单）
-  - 设置窗口（编辑白名单/黑名单/阈值/l4_auto_verify）
-  - 一键执行建议操作
-  - 重新扫描
+  - 加载文档（9 种格式）
+  - 触发异步扫描（gehd_check / gehd_cross_validate）
+  - 四标签页：问题 / 警告 / 验证队列 / 文档视图
+  - 右键标记候选词 / 一键执行建议
+  - 主题切换（默认/深夜/色盲友好）
+  - 全文高亮视图 + 证据链弹窗
 """
 from __future__ import annotations
 
@@ -53,9 +52,9 @@ from hallucination_checker.engine.checker import gehd_check
 from hallucination_checker.engine.config import GEHD_VERSION, load_config
 from hallucination_checker.engine.cross_validate import gehd_cross_validate
 from hallucination_checker.gui.settings_dialog import get_config_dir
+from hallucination_checker.gui.theme import Theme
 from hallucination_checker.io.document_text import DocumentText
 
-# 配置目录（与引擎组共享，不私存）
 _CONFIG_DIR = get_config_dir()
 
 # ---- 多格式支持 ----
@@ -73,25 +72,6 @@ _FACTORY_MAP: dict[str, Any] = {
     '.pdf':  DocumentText.from_pdf,
     '.pptx': DocumentText.from_pptx,
 }
-
-# ---- 统一色彩体系 ----
-# 规则：同一含义在所有视图中使用同一颜色
-_COLOR_ISSUE = QColor('#C62828')                 # 红: 高危/确认虚构
-_COLOR_ISSUE_BG = QColor('#FFCDD2')              # 红底
-_COLOR_WARNING = QColor('#E65100')               # 橙: 中危/待核查
-_COLOR_WARNING_BG = QColor('#FFE0B2')            # 橙底
-_COLOR_LOW = QColor('#F9A825')                   # 黄: 低危/待验证
-_COLOR_LOW_BG = QColor('#FFF9C4')                # 黄底
-_COLOR_VERIFIED = QColor('#2E7D32')              # 绿: 已验证真
-_COLOR_VERIFIED_BG = QColor('#C8E6C9')           # 绿底
-_COLOR_UNCERTAIN = QColor('#757575')             # 灰: 无法验证/分歧
-_COLOR_UNCERTAIN_BG = QColor('#F5F5F5')          # 灰底
-_COLOR_DECLARATION = QColor('#6A1B9A')           # 紫: 声明提取(L3.7)
-_COLOR_DECLARATION_BG = QColor('#E1BEE7')        # 紫底
-_COLOR_CONSENSUS_STRONG = QColor('#1B5E20')      # 深绿: 强共识
-_COLOR_CONSENSUS_STRONG_BG = QColor('#A5D6A7')   # 深绿底
-_COLOR_CONSENSUS_WEAK = QColor('#33691E')        # 浅绿: 弱共识
-_COLOR_CONSENSUS_WEAK_BG = QColor('#C8E6C9')     # 浅绿底
 
 # L4 状态 → 中文标签
 _STATUS_LABELS: dict[str, str] = {
@@ -137,6 +117,33 @@ def _append_to_json_array(filepath: Path, key: str, word: str) -> None:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
 
+# ---- 主题持久化 ----
+_SETTINGS_PATH = Path(__file__).resolve().parents[5] / 'workspace' / 'U' / 'settings.json'
+
+
+def _load_theme_name() -> str:
+    try:
+        with open(_SETTINGS_PATH, encoding='utf-8') as f:
+            data: Any = json.load(f)
+        return str(data.get('theme', 'default'))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return 'default'
+
+
+def _save_theme_name(name: str) -> None:
+    _SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    data: dict[str, Any] = {}
+    if _SETTINGS_PATH.exists():
+        try:
+            with open(_SETTINGS_PATH, encoding='utf-8') as f:
+                data = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            pass
+    data['theme'] = name
+    with open(_SETTINGS_PATH, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
 # ---- 拖拽支持 ----
 
 class DropLineEdit(QLineEdit):
@@ -168,7 +175,6 @@ class DropLineEdit(QLineEdit):
 # ---- Evidence 详情弹窗 ----
 
 class EvidenceDialog(QDialog):
-    """L4 条目 evidence 详情弹窗。"""
 
     def __init__(self, entry: dict[str, Any], parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -191,15 +197,12 @@ class EvidenceDialog(QDialog):
         conf = verification.get('confidence', 0)
 
         html_parts: list[str] = [
-            f'<h2>{word}</h2>',
-            '<hr>',
-            '<h3>评分 (Scoring)</h3>',
-            '<table>',
+            f'<h2>{word}</h2>', '<hr>',
+            '<h3>评分 (Scoring)</h3>', '<table>',
         ]
         for k, v in sorted(scoring.items()):
             html_parts.append(f'<tr><td><b>{k}</b></td><td>{v}</td></tr>')
         html_parts.append('</table>')
-
         html_parts.extend([
             '<h3>一致性 (Consistency)</h3>',
             f'<p>命中: {"是" if consistency.get("hit") else "否"}'
@@ -223,19 +226,13 @@ class EvidenceDialog(QDialog):
 # ---- 后台扫描线程 ----
 
 class ScanWorker(QThread):
-    """后台扫描工作线程，避免阻塞主线程导致 macOS 杀进程。"""
-
-    finished = Signal(dict)   # {'issues': ..., 'warnings': ..., 'stats': ..., 'l4_queue': ..., 'config': ...}
+    finished = Signal(dict)
     error_msg = Signal(str)
     progress = Signal(str)
 
     def __init__(
-        self,
-        text: DocumentText,
-        config: Any,
-        output_l4: bool,
-        cross_validate: bool,
-        parent: QWidget | None = None,
+        self, text: DocumentText, config: Any, output_l4: bool,
+        cross_validate: bool, parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self._text = text
@@ -258,13 +255,9 @@ class ScanWorker(QThread):
                 issues, warnings, stats, l4_queue = gehd_check(
                     self._text, self._config, output_verify_queue=self._output_l4
                 )
-
             self.finished.emit({
-                'issues': issues,
-                'warnings': warnings,
-                'stats': stats,
-                'l4_queue': l4_queue,
-                'config': self._config,
+                'issues': issues, 'warnings': warnings,
+                'stats': stats, 'l4_queue': l4_queue, 'config': self._config,
             })
         except Exception as e:
             self.error_msg.emit(str(e))
@@ -274,25 +267,45 @@ class ScanWorker(QThread):
 
 class MainWindow(QMainWindow):
 
-    def __init__(self) -> None:
+    def __init__(self, theme: Theme | None = None) -> None:
         super().__init__()
         self.setWindowTitle('GEHD — 文档幻觉核查工具')
         self.setMinimumSize(1100, 660)
         self.resize(1160, 740)
 
+        # 主题
+        self.theme: Theme = theme or Theme.default()
+        self._apply_theme()
+
+        # 状态
         self._current_stats: dict[str, int] = {}
         self._current_issues: list[str] = []
         self._current_warnings: list[str] = []
         self._current_l4_queue: list[dict[str, Any]] = []
         self._current_config: Any = None
-        self._current_text: Any = None  # DocumentText 实例，供文档视图渲染
+        self._current_text: Any = None
         self._settings_dialog: Any = None
         self._verified_real_label: QLabel | None = None
         self._verified_fake_label: QLabel | None = None
 
         self._setup_menu()
         self._setup_ui()
+        self._setup_legend()
         self._setup_statusbar()
+
+    # ---- 主题 ----
+
+    def _apply_theme(self) -> None:
+        app = QApplication.instance()
+        if app and isinstance(app, QApplication):
+            app.setStyleSheet(self.theme.stylesheet())
+
+    def set_theme(self, theme: Theme) -> None:
+        self.theme = theme
+        self._apply_theme()
+        _save_theme_name(theme.dir_name())
+        self._rebuild_legend()
+        self._refresh_document_view()
 
     # ---- 菜单栏 ----
 
@@ -323,7 +336,7 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(12, 10, 12, 10)
         layout.setSpacing(8)
 
-        # --- 文件选择行 ---
+        # 文件选择行
         file_layout = QHBoxLayout()
         file_layout.setSpacing(6)
         file_label = QLabel('文件路径：')
@@ -333,9 +346,7 @@ class MainWindow(QMainWindow):
         self._browse_btn.clicked.connect(self._browse_file)
         self._verify_checkbox = QCheckBox('生成验证队列')
         self._cross_validate_checkbox = QCheckBox('多模型交叉校验')
-        self._cross_validate_checkbox.setToolTip(
-            '三路并行检测（默认/宽松/严格），交叉比对结果'
-        )
+        self._cross_validate_checkbox.setToolTip('三路并行检测（默认/宽松/严格），交叉比对结果')
         self._scan_btn = QPushButton('扫描')
         self._scan_btn.setMinimumWidth(72)
         self._scan_btn.clicked.connect(self._scan)
@@ -348,7 +359,7 @@ class MainWindow(QMainWindow):
         file_layout.addWidget(self._scan_btn)
         layout.addLayout(file_layout)
 
-        # --- 统计条 ---
+        # 统计条
         self._stats_frame = QFrame()
         self._stats_frame.setFrameShape(QFrame.Shape.StyledPanel)
         self._stats_frame.setStyleSheet(
@@ -367,7 +378,6 @@ class MainWindow(QMainWindow):
             stats_layout.addWidget(lbl)
             self._stat_labels[key] = lbl
 
-        # 动态验证统计（P2-3，存在时显示）
         self._verified_real_label = QLabel('')
         self._verified_real_label.setStyleSheet(
             'border: none; background: transparent; color: #2E7D32; font-weight: bold;'
@@ -380,14 +390,12 @@ class MainWindow(QMainWindow):
         )
         stats_layout.addWidget(self._verified_fake_label)
 
-        # P2-5: 交叉校验共识统计
         self._consensus_label = QLabel('')
         self._consensus_label.setStyleSheet(
             'border: none; background: transparent; color: #1B5E20; font-weight: bold;'
         )
         stats_layout.addWidget(self._consensus_label)
 
-        # P0-2: l4_auto_verify 开关状态
         self._auto_verify_status = QLabel('')
         self._auto_verify_status.setStyleSheet(
             'border: none; background: transparent; color: #1565C0;'
@@ -397,10 +405,9 @@ class MainWindow(QMainWindow):
         stats_layout.addStretch()
         layout.addWidget(self._stats_frame)
 
-        # --- 结果标签页 ---
+        # 结果标签页
         self._result_tabs = QTabWidget()
 
-        # 问题标签页
         self._issues_list = QListWidget()
         self._issues_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._issues_list.customContextMenuRequested.connect(
@@ -408,7 +415,6 @@ class MainWindow(QMainWindow):
         )
         self._result_tabs.addTab(self._issues_list, '问题 (0)')
 
-        # 警告标签页
         self._warnings_list = QListWidget()
         self._warnings_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._warnings_list.customContextMenuRequested.connect(
@@ -416,7 +422,7 @@ class MainWindow(QMainWindow):
         )
         self._result_tabs.addTab(self._warnings_list, '警告 (0)')
 
-        # L4 验证队列标签页（表格 + 操作栏）
+        # L4 验证队列
         self._l4_tab = QWidget()
         l4_layout = QVBoxLayout(self._l4_tab)
         l4_layout.setContentsMargins(0, 0, 0, 0)
@@ -431,11 +437,9 @@ class MainWindow(QMainWindow):
         self._l4_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._l4_table.horizontalHeader().setStretchLastSection(True)
         self._l4_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        # 双击行 → 查看 evidence 详情
         self._l4_table.cellDoubleClicked.connect(self._on_l4_row_double_clicked)
         l4_layout.addWidget(self._l4_table)
 
-        # P2-4: 一键执行建议按钮
         l4_action_layout = QHBoxLayout()
         self._l4_action_btn = QPushButton('一键执行建议')
         self._l4_action_btn.setEnabled(False)
@@ -449,58 +453,86 @@ class MainWindow(QMainWindow):
 
         self._result_tabs.addTab(self._l4_tab, '验证队列 (0)')
 
-        # 全文文档视图
+        # 文档视图
         self._doc_view = QTextBrowser()
         self._doc_view.setOpenExternalLinks(False)
         self._doc_view.setReadOnly(True)
         self._result_tabs.addTab(self._doc_view, '文档视图')
 
-        # 当切换到 L4 标签页时，更新一键执行按钮状态
         self._result_tabs.currentChanged.connect(self._on_tab_changed)
-
         layout.addWidget(self._result_tabs, 1)
 
-        # 全局图例条
-        legend = QFrame()
-        legend.setStyleSheet(
-            'QFrame { background: #FAFAFA; border: 1px solid #E0E0E0; border-radius: 4px; padding: 4px 12px; }'
+    # ---- 图例条 ----
+
+    def _setup_legend(self) -> None:
+        card_color = self.theme.color('surface.card')
+        self._legend = QFrame()
+        self._legend.setStyleSheet(
+            f'QFrame {{ background: {card_color.name()}; border: 1px solid '
+            + self.theme.color('surface.border').name() + '; border-radius: 4px; padding: 4px 12px; }}'
         )
-        legend_layout = QHBoxLayout(legend)
+        legend_layout = QHBoxLayout(self._legend)
         legend_layout.setContentsMargins(8, 2, 8, 2)
         legend_layout.setSpacing(16)
-        for color, label in [
-            (_COLOR_ISSUE_BG, '高危'),
-            (_COLOR_WARNING_BG, '中危'),
-            (_COLOR_LOW_BG, '低危'),
-            (_COLOR_VERIFIED_BG, '已验证'),
-            (_COLOR_UNCERTAIN_BG, '无法验证'),
-            (_COLOR_DECLARATION_BG, '声明'),
+        self._legend_items: list[tuple[QLabel, QLabel]] = []
+        for token_key, label in [
+            ('severity.issue', '高危'),
+            ('severity.warning', '中危'),
+            ('severity.low', '低危'),
+            ('severity.verified', '已验证'),
+            ('severity.uncertain', '无法验证'),
+            ('severity.declaration', '声明'),
         ]:
             swatch = QLabel('  ')
             swatch.setFixedSize(18, 18)
             swatch.setStyleSheet(
-                f'background-color: {color.name()}; border-radius: 2px; border: 1px solid #CCC;'
+                f'background-color: {self.theme.color(token_key + ".bg").name()}; '
+                'border-radius: 2px; border: 1px solid #CCC;'
             )
             text = QLabel(label)
             text.setStyleSheet('border: none; background: transparent; font-size: 11px; color: #555;')
             legend_layout.addWidget(swatch)
             legend_layout.addWidget(text)
+            self._legend_items.append((swatch, text))
         legend_layout.addStretch()
-        layout.addWidget(legend)
+        central = self.centralWidget()
+        layout = central.layout()
+        if layout is not None:
+            layout.addWidget(self._legend)
 
-        # ---- 状态栏 ----
+    def _rebuild_legend(self) -> None:
+        for i, (token_key, _label) in enumerate([
+            ('severity.issue', '高危'),
+            ('severity.warning', '中危'),
+            ('severity.low', '低危'),
+            ('severity.verified', '已验证'),
+            ('severity.uncertain', '无法验证'),
+            ('severity.declaration', '声明'),
+        ]):
+            if i < len(self._legend_items):
+                self._legend_items[i][0].setStyleSheet(
+                        f'background-color: {self.theme.color(token_key + ".bg").name()}; '
+                        'border-radius: 2px; border: 1px solid #CCC;'
+                    )
+        card_color = self.theme.color('surface.card')
+        border_color = self.theme.color('surface.border')
+        self._legend.setStyleSheet(
+            f'QFrame {{ background: {card_color.name()}; border: 1px solid '
+            f'{border_color.name()}; border-radius: 4px; padding: 4px 12px; }}'
+        )
+
+    # ---- 状态栏 ----
 
     def _setup_statusbar(self) -> None:
         self._statusbar = QStatusBar()
-        self._statusbar.showMessage('就绪 — 请选择一个 .docx 文件开始扫描')
+        self._statusbar.showMessage('就绪 — 请选择一个文件开始扫描')
         self.setStatusBar(self._statusbar)
 
-    # ---- 浏览文件 ----
+    # ---- 浏览 ----
 
     def _browse_file(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
-            self, '选择文档',
-            '',
+            self, '选择文档', '',
             '文档文件 (*.docx *.pdf *.pptx *.txt *.md *.html *.jsonl *.csv);;所有文件 (*)',
         )
         if path:
@@ -523,8 +555,7 @@ class MainWindow(QMainWindow):
         if factory is None:
             QMessageBox.warning(
                 self, '格式不支持',
-                f'不支持的格式（{ext}）。\n'
-                f'支持：.docx .pdf .pptx .txt .md .html .jsonl .csv'
+                f'不支持的格式（{ext}）。\n支持：.docx .pdf .pptx .txt .md .html .jsonl .csv'
             )
             return
 
@@ -542,7 +573,7 @@ class MainWindow(QMainWindow):
         self._scan_btn.setText('扫描中...')
         self._statusbar.showMessage('扫描中...')
 
-        self._current_text = text  # 保存文档供全文视图渲染
+        self._current_text = text
 
         self._worker = ScanWorker(text, config, output_l4, cross_validate, self)
         self._worker.finished.connect(self._on_scan_finished)
@@ -571,9 +602,7 @@ class MainWindow(QMainWindow):
         self._scan_btn.setText('重新扫描')
         issue_count = len(issues)
         self._statusbar.showMessage(
-            f'扫描完成，发现 {issue_count} 个问题'
-            if issue_count > 0
-            else '扫描完成，未发现问题'
+            f'扫描完成，发现 {issue_count} 个问题' if issue_count > 0 else '扫描完成，未发现问题'
         )
 
     def _on_scan_error(self, error: str) -> None:
@@ -582,7 +611,7 @@ class MainWindow(QMainWindow):
         self._statusbar.showMessage('扫描失败')
         QMessageBox.critical(self, '扫描错误', f'扫描过程中发生错误：\n{error}')
 
-    # ---- 统计条刷新 ----
+    # ---- 统计条 ----
 
     def _refresh_stats(self, stats: dict[str, int]) -> None:
         mapping: dict[str, str] = {
@@ -593,7 +622,6 @@ class MainWindow(QMainWindow):
             'low_risk':           f'低危: {stats.get("low_risk", 0)}',
             'l4_queue_size':      f'L4队列: {stats.get("l4_queue_size", 0)}',
         }
-        # P2-5: 交叉校验时使用合并统计
         if stats.get('cross_validate_mode'):
             mapping['total_candidates'] = f'合并问题: {stats.get("merged_issues", 0)}'
             mapping['high_risk'] = f'A/B/C: {stats.get("A_issues", 0)}/{stats.get("B_issues", 0)}/{stats.get("C_issues", 0)}'
@@ -604,26 +632,16 @@ class MainWindow(QMainWindow):
         for key, label in self._stat_labels.items():
             label.setText(mapping.get(key, '—'))
 
-        # P2-3: 动态验证统计
         vr = stats.get('l4_verified_real', 0)
         vf = stats.get('l4_verified_fake', 0)
         if self._verified_real_label:
-            self._verified_real_label.setText(
-                f'已验证真: {vr}' if vr > 0 else ''
-            )
+            self._verified_real_label.setText(f'已验证真: {vr}' if vr > 0 else '')
         if self._verified_fake_label:
-            self._verified_fake_label.setText(
-                f'已验证假: {vf}' if vf > 0 else ''
-            )
+            self._verified_fake_label.setText(f'已验证假: {vf}' if vf > 0 else '')
 
-        # P2-5: 共识统计
         strong = stats.get('cross_high_consensus', 0)
-        if strong > 0:
-            self._consensus_label.setText(f'强共识: {strong}')
-        else:
-            self._consensus_label.setText('')
+        self._consensus_label.setText(f'强共识: {strong}' if strong > 0 else '')
 
-        # P0-2: l4_auto_verify 状态
         cfg = self._current_config
         if cfg and getattr(cfg, 'l4_auto_verify', False):
             timeout = getattr(cfg, 'l4_search_timeout', 5.0)
@@ -634,31 +652,32 @@ class MainWindow(QMainWindow):
     # ---- 结果刷新 ----
 
     def _refresh_results(
-        self,
-        issues: list[str],
-        warnings: list[str],
-        l4_queue: list[dict[str, Any]],
-        config: Any = None,
+        self, issues: list[str], warnings: list[str],
+        l4_queue: list[dict[str, Any]], config: Any = None,
     ) -> None:
         self._issues_list.clear()
         self._warnings_list.clear()
         self._l4_table.setRowCount(0)
 
+        issue_bg = self.theme.color('severity.issue.bg')
+        issue_fg = self.theme.color('severity.issue.fg')
+        warn_bg = self.theme.color('severity.warning.bg')
+        warn_fg = self.theme.color('severity.warning.fg')
+
         for text in issues:
             item = QListWidgetItem(text)
-            item.setBackground(_COLOR_ISSUE_BG)
-            item.setForeground(_COLOR_ISSUE)
+            item.setBackground(issue_bg)
+            item.setForeground(issue_fg)
             item.setData(Qt.ItemDataRole.UserRole, text)
             self._issues_list.addItem(item)
 
         for text in warnings:
             item = QListWidgetItem(text)
-            item.setBackground(_COLOR_WARNING_BG)
-            item.setForeground(_COLOR_WARNING)
+            item.setBackground(warn_bg)
+            item.setForeground(warn_fg)
             item.setData(Qt.ItemDataRole.UserRole, text)
             self._warnings_list.addItem(item)
 
-        # L4 队列（5列：词/分类/分数/状态/位置）
         high_th = config.score_high_threshold if config else 65
         med_th = config.score_medium_threshold if config else 45
         self._l4_table.setRowCount(len(l4_queue))
@@ -682,9 +701,7 @@ class MainWindow(QMainWindow):
 
             self._l4_table.setItem(row, 4, QTableWidgetItem(location))
 
-            # P2-3: 按验证状态着色（优先于分数阈值着色）
             status_colors = self._get_status_colors(status)
-            # P2-5: 交叉校验共识级别
             xv = entry.get('cross_validation', {})
             consensus = xv.get('consensus_level', '')
             consensus_colors = self._get_consensus_colors(consensus)
@@ -705,51 +722,44 @@ class MainWindow(QMainWindow):
                 for col in range(5):
                     cell = self._l4_table.item(row, col)
                     if cell:
-                        cell.setBackground(_COLOR_ISSUE_BG)
+                        cell.setBackground(self.theme.color('severity.issue.bg'))
             elif score >= med_th:
                 for col in range(5):
                     cell = self._l4_table.item(row, col)
                     if cell:
-                        cell.setBackground(_COLOR_WARNING_BG)
+                        cell.setBackground(self.theme.color('severity.warning.bg'))
 
         self._result_tabs.setTabText(0, f'问题 ({len(issues)})')
         self._result_tabs.setTabText(1, f'警告 ({len(warnings)})')
         self._result_tabs.setTabText(2, f'验证队列 ({len(l4_queue)})')
-
-        # 更新一键执行按钮
         self._update_action_button()
 
-    @staticmethod
-    def _get_status_colors(status: str) -> tuple[QColor, QColor] | None:
-        """返回 (bg, fg) 或 None。"""
+    def _get_status_colors(self, status: str) -> tuple[QColor, QColor] | None:
         if status == 'verified_real':
-            return (_COLOR_VERIFIED_BG, _COLOR_VERIFIED)
+            return (self.theme.color('severity.verified.bg'), self.theme.color('severity.verified.fg'))
         if status == 'verified_fake':
-            return (_COLOR_ISSUE_BG, _COLOR_ISSUE)
+            return (self.theme.color('severity.issue.bg'), self.theme.color('severity.issue.fg'))
         if status == 'need_manual_check':
-            return (_COLOR_WARNING_BG, _COLOR_WARNING)
+            return (self.theme.color('severity.warning.bg'), self.theme.color('severity.warning.fg'))
         if status == 'unable_to_verify':
-            return (_COLOR_UNCERTAIN_BG, _COLOR_UNCERTAIN)
+            return (self.theme.color('severity.uncertain.bg'), self.theme.color('severity.uncertain.fg'))
         return None
 
-    @staticmethod
-    def _get_consensus_colors(level: str) -> tuple[QColor, QColor] | None:
-        """返回 (bg, fg) 或 None。"""
+    def _get_consensus_colors(self, level: str) -> tuple[QColor, QColor] | None:
         if level == 'strong':
-            return (_COLOR_CONSENSUS_STRONG_BG, _COLOR_CONSENSUS_STRONG)
+            return (self.theme.color('severity.consensus_strong.bg'), self.theme.color('severity.consensus_strong.fg'))
         if level == 'weak':
-            return (_COLOR_CONSENSUS_WEAK_BG, _COLOR_CONSENSUS_WEAK)
+            return (self.theme.color('severity.consensus_weak.bg'), self.theme.color('severity.consensus_weak.fg'))
         if level == 'divergent':
-            return (_COLOR_UNCERTAIN_BG, _COLOR_UNCERTAIN)
+            return (self.theme.color('severity.uncertain.bg'), self.theme.color('severity.uncertain.fg'))
         return None
 
-    # ---- L4 行双击 → evidence 详情 ----
+    # ---- L4 双击 → evidence ----
 
     def _on_l4_row_double_clicked(self, row: int, _col: int) -> None:
         if row < 0 or row >= len(self._current_l4_queue):
             return
-        entry = self._current_l4_queue[row]
-        dialog = EvidenceDialog(entry, self)
+        dialog = EvidenceDialog(self._current_l4_queue[row], self)
         dialog.exec()
 
     # ---- 一键执行建议 ----
@@ -758,21 +768,15 @@ class MainWindow(QMainWindow):
         if index == 2:
             self._update_action_button()
 
-    def _on_l4_table_selection_changed(self) -> None:
-        self._update_action_button()
-
     def _update_action_button(self) -> None:
         row = self._l4_table.currentRow()
         if row < 0:
             self._l4_action_btn.setEnabled(False)
             self._l4_action_label.setText('')
             return
-
         entry: dict[str, Any] = self._current_l4_queue[row]
         evidence: dict[str, Any] = entry.get('evidence', {})
         recommendation: str = evidence.get('recommendation', '')
-
-        # 仅对可执行建议启用
         actionable = {'建议加白名单', '建议加黑名单'}
         if recommendation in actionable:
             self._l4_action_btn.setEnabled(True)
@@ -824,15 +828,12 @@ class MainWindow(QMainWindow):
     # ---- 文档视图 ----
 
     def _refresh_document_view(self) -> None:
-        """生成全文 HTML 并渲染到文档视图标签页。"""
         text = self._current_text
         if text is None:
             self._doc_view.setHtml('<p style="color:#999;">请先扫描文档。</p>')
             return
 
-        # 解析所有 issue/warning → (location, keyword, severity)
-        # 优先级：issue(高)>warning(中)>verified_real(绿)>verified_fake(红)
-        highlights: dict[str, list[tuple[str, str]]] = {}  # loc → [(word, severity)]
+        highlights: dict[str, list[tuple[str, str]]] = {}
 
         for issue in self._current_issues:
             loc, word = self._parse_location_word(issue)
@@ -852,7 +853,6 @@ class MainWindow(QMainWindow):
                 sev = 'verified_real' if status == 'verified_real' else 'l4_pending'
                 highlights.setdefault(loc, []).append((word, sev))
 
-        # 构建 HTML
         parts_html: list[str] = []
         for part in text.parts:
             loc = part.location
@@ -861,7 +861,6 @@ class MainWindow(QMainWindow):
 
             loc_highlights = highlights.get(loc, [])
             if loc_highlights:
-                # 按词长降序，长词优先匹配
                 for word, severity in sorted(loc_highlights, key=lambda x: -len(x[0])):
                     css_class, title_attr = {
                         'issue': ('hl-issue', '高危'),
@@ -874,23 +873,33 @@ class MainWindow(QMainWindow):
                         part_text = part_text.replace(
                             escaped,
                             f'<span class="{css_class}" title="{title_attr}">{escaped}</span>',
-                            1  # 每段只替换首次出现
+                            1
                         )
 
             loc_tag = f' <small style="color:#999;">[{display_label}]</small>'
             parts_html.append(f'<p><span class="loc-label">{loc_tag}</span>{part_text}</p>')
 
         body = '\n'.join(parts_html) if parts_html else '<p style="color:#999;">无内容</p>'
+
+        # 用主题令牌颜色生成 CSS
+        css_parts: list[str] = []
+        for cls_name, token_key in [
+            ('hl-issue', 'severity.issue.bg'),
+            ('hl-warning', 'severity.warning.bg'),
+            ('hl-real', 'severity.verified.bg'),
+            ('hl-l4', 'severity.declaration.bg'),
+            ('hl-info', 'severity.uncertain.bg'),
+        ]:
+            css_parts.append(f'.{cls_name} {{ background-color: {self.theme.color(token_key).name()}; '
+                             'padding: 1px 3px; border-radius: 2px; cursor: pointer; }}')
+
         html = f'''<!DOCTYPE html>
 <html><head><meta charset="utf-8">
 <style>
-  body {{ font-family: -apple-system, sans-serif; font-size: 14px; line-height: 1.8; margin: 24px; color: #333; }}
+  body {{ font-family: -apple-system, sans-serif; font-size: 14px; line-height: 1.8; margin: 24px; }}
   .loc-label {{ color: #aaa; font-size: 12px; margin-right: 8px; }}
-  .hl-issue {{ background-color: #FFCDD2; padding: 1px 3px; border-radius: 2px; cursor: pointer; }}
-  .hl-warning {{ background-color: #FFE0B2; padding: 1px 3px; border-radius: 2px; cursor: pointer; }}
-  .hl-real {{ background-color: #C8E6C9; padding: 1px 3px; border-radius: 2px; text-decoration: line-through; cursor: pointer; }}
-  .hl-l4 {{ background-color: #E1BEE7; padding: 1px 3px; border-radius: 2px; cursor: pointer; }}
-  .hl-info {{ background-color: #F5F5F5; padding: 1px 3px; }}
+  .hl-real {{ text-decoration: line-through; }}
+{chr(10).join(css_parts)}
   .stats-bar {{ margin-bottom: 16px; padding: 8px 12px; background: #F5F5F5; border-radius: 4px; font-size: 13px; }}
 </style></head><body>
 <div class="stats-bar">
@@ -902,31 +911,24 @@ class MainWindow(QMainWindow):
 
     @staticmethod
     def _parse_location_word(text: str) -> tuple[str, str]:
-        """从 issue/warning 文本中提取 (位置标识, 关键词)。"""
         import re as _re
-        # 位置标识：P4, P12, T2[3,1] 等
         loc_m = _re.search(r'\b(P\d+|T\d+\[\d+,\d+\])\b', text)
         location = loc_m.group(1) if loc_m else ''
-        # 关键词：引号内文本
         word_m = _re.search(r'["\u201c]([^"\u201d]+)["\u201d]', text)
         if not word_m:
             word_m = _re.search(r"'([^']+)'", text)
         keyword = word_m.group(1) if word_m else ''
         return location, keyword
 
-    # ---- 右键菜单：问题/警告列表 ----
+    # ---- 右键菜单 ----
 
-    def _on_result_context_menu(
-        self, pos, list_widget: QListWidget, is_issue: bool,
-    ) -> None:
+    def _on_result_context_menu(self, pos, list_widget: QListWidget, is_issue: bool) -> None:
         item = list_widget.currentItem()
         if not item:
             return
         text = item.data(Qt.ItemDataRole.UserRole) or item.text()
         word = _extract_word_from_issue(text)
         self._show_context_menu(pos, list_widget, word, item)
-
-    # ---- 右键菜单：L4 队列表格 ----
 
     def _on_l4_context_menu(self, pos) -> None:
         row = self._l4_table.currentRow()
@@ -938,15 +940,12 @@ class MainWindow(QMainWindow):
         word = word_item.text()
         self._show_context_menu(pos, self._l4_table, word, row=row)
 
-    # ---- 右键菜单核心 ----
-
     def _show_context_menu(
         self, pos, widget: QListWidget | QTableWidget, word: str,
         item: QListWidgetItem | None = None, *, row: int = -1,
     ) -> None:
         menu = QMenu(self)
 
-        # P2-4: 根据验证状态禁用对应菜单项
         real_enabled = True
         fake_enabled = True
         if isinstance(widget, QTableWidget) and 0 <= row < len(self._current_l4_queue):
@@ -958,16 +957,12 @@ class MainWindow(QMainWindow):
 
         if real_enabled:
             real_action = QAction('确认真实', self)
-            real_action.triggered.connect(
-                lambda: self._mark_word(word, 'real', widget, item, row)
-            )
+            real_action.triggered.connect(lambda: self._mark_word(word, 'real', widget, item, row))
             menu.addAction(real_action)
 
         if fake_enabled:
             fake_action = QAction('确认幻觉', self)
-            fake_action.triggered.connect(
-                lambda: self._mark_word(word, 'fake', widget, item, row)
-            )
+            fake_action.triggered.connect(lambda: self._mark_word(word, 'fake', widget, item, row))
             menu.addAction(fake_action)
 
         if not real_enabled and not fake_enabled:
@@ -989,10 +984,7 @@ class MainWindow(QMainWindow):
             target_key = 'blacklist'
 
         if _word_in_json_array(target_file, target_key, word):
-            QMessageBox.information(
-                self, '已存在',
-                f'"{word}" 已在{("白名单" if action == "real" else "黑名单")}中。'
-            )
+            QMessageBox.information(self, '已存在', f'"{word}" 已在{("白名单" if action == "real" else "黑名单")}中。')
             return
 
         try:
@@ -1023,7 +1015,7 @@ class MainWindow(QMainWindow):
             self._settings_dialog.activateWindow()
             return
         from hallucination_checker.gui.settings_dialog import SettingsDialog
-        self._settings_dialog = SettingsDialog(self)
+        self._settings_dialog = SettingsDialog(self, theme_callback=self.set_theme, current_theme=self.theme)
         self._settings_dialog.setWindowModality(Qt.WindowModality.NonModal)
         self._settings_dialog.show()
 
@@ -1035,8 +1027,12 @@ def main() -> None:
     app.setApplicationName('GEHD')
     app.setApplicationVersion(GEHD_VERSION)
     app.setStyle('Fusion')
-    window = MainWindow()
+
+    theme_name = _load_theme_name()
+    theme = Theme.find(theme_name) or Theme.default()
+    window = MainWindow(theme)
     window.show()
+
     sys.exit(app.exec())
 
 

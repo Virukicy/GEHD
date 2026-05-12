@@ -222,39 +222,40 @@ class TestStatusLabels:
 
 
 class TestStatusColors:
-    """MainWindow._get_status_colors 测试。"""
+    """Theme 颜色令牌测试（默认主题）。"""
+
+    @classmethod
+    def setup_class(cls) -> None:
+        from hallucination_checker.gui.theme import Theme
+        cls.theme = Theme.default()
 
     def test_verified_real_color(self) -> None:
-        colors = MainWindow._get_status_colors('verified_real')
-        assert colors is not None
-        bg, fg = colors
+        bg = self.theme.color('severity.verified.bg')
+        fg = self.theme.color('severity.verified.fg')
         assert bg.name() == '#c8e6c9'
         assert fg.name() == '#2e7d32'
 
     def test_verified_fake_color(self) -> None:
-        colors = MainWindow._get_status_colors('verified_fake')
-        assert colors is not None
-        bg, fg = colors
+        bg = self.theme.color('severity.issue.bg')
+        fg = self.theme.color('severity.issue.fg')
         assert bg.name() == '#ffcdd2'
         assert fg.name() == '#c62828'
 
     def test_need_manual_color(self) -> None:
-        colors = MainWindow._get_status_colors('need_manual_check')
-        assert colors is not None
-        bg, fg = colors
+        bg = self.theme.color('severity.warning.bg')
         assert bg.name() == '#ffe0b2'
 
     def test_unable_to_verify_color(self) -> None:
-        colors = MainWindow._get_status_colors('unable_to_verify')
-        assert colors is not None
-        bg, fg = colors
+        bg = self.theme.color('severity.uncertain.bg')
         assert bg.name() == '#f5f5f5'
 
-    def test_pending_returns_none(self) -> None:
-        assert MainWindow._get_status_colors('pending') is None
+    def test_consensus_strong_color(self) -> None:
+        bg = self.theme.color('severity.consensus_strong.bg')
+        assert bg.name() == '#a5d6a7'
 
-    def test_unknown_status_returns_none(self) -> None:
-        assert MainWindow._get_status_colors('bogus') is None
+    def test_consensus_weak_color(self) -> None:
+        bg = self.theme.color('severity.consensus_weak.bg')
+        assert bg.name() == '#c8e6c9'
 
 
 # ---- Evidence 结构解析 ----

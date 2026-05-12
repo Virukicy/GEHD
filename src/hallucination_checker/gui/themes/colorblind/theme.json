@@ -1,0 +1,25 @@
+{
+  "name": "色盲友好",
+  "tokens": {
+    "severity": {
+      "issue":           { "fg": "#0D47A1", "bg": "#BBDEFB", "prefix": "‼" },
+      "warning":         { "fg": "#E65100", "bg": "#FFE0B2", "prefix": "!" },
+      "low":             { "fg": "#F57F17", "bg": "#FFF9C4", "prefix": "•" },
+      "verified":        { "fg": "#2E7D32", "bg": "#C8E6C9", "prefix": "✓" },
+      "uncertain":       { "fg": "#757575", "bg": "#F5F5F5", "prefix": "?" },
+      "declaration":     { "fg": "#6A1B9A", "bg": "#E1BEE7" },
+      "consensus_strong":{ "fg": "#1B5E20", "bg": "#A5D6A7" },
+      "consensus_weak":  { "fg": "#33691E", "bg": "#C8E6C9" }
+    },
+    "surface": {
+      "background": "#FFFFFF",
+      "card":       "#F5F5F5",
+      "border":     "#E0E0E0"
+    },
+    "text": {
+      "primary":   "#212121",
+      "secondary": "#757575",
+      "link":      "#1565C0"
+    }
+  }
+}

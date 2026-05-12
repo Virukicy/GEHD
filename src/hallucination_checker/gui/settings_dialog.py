@@ -6,11 +6,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QDialog,
     QDoubleSpinBox,
     QFormLayout,
@@ -90,18 +91,23 @@ def _write_json_obj(filepath: Path, data: dict[str, Any]) -> None:
 class SettingsDialog(QDialog):
     """GEHD 设置独立窗口。
 
-    三个选项卡：
-      - 白名单：每行一词，可增删
-      - 黑名单：每行一词，可增删
-      - 阈值：数值输入框 + 字段说明
+    四个选项卡：
+      - 白名单 / 黑名单 / 阈值 / 主题
     """
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(
+        self, parent: QWidget | None = None,
+        theme_callback: Callable[..., Any] | None = None,
+        current_theme: Any = None,
+    ) -> None:
         super().__init__(parent)
         self.setWindowTitle('GEHD 设置')
         self.setMinimumSize(560, 480)
         self.resize(600, 520)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, False)
+
+        self._theme_callback = theme_callback
+        self._current_theme = current_theme
 
         self._whitelist_path = _CONFIG_DIR / 'whitelist.json'
         self._blacklist_path = _CONFIG_DIR / 'blacklist.json'
@@ -122,6 +128,7 @@ class SettingsDialog(QDialog):
         self._tabs.addTab(self._build_whitelist_tab(), '白名单')
         self._tabs.addTab(self._build_blacklist_tab(), '黑名单')
         self._tabs.addTab(self._build_thresholds_tab(), '阈值')
+        self._tabs.addTab(self._build_theme_tab(), '主题')
         layout.addWidget(self._tabs)
 
         close_btn = QPushButton('关闭（自动保存）')
@@ -264,6 +271,45 @@ class SettingsDialog(QDialog):
         layout.addWidget(text_group)
         layout.addStretch()
         return scroll
+
+    # --- 主题 Tab ---
+
+    def _build_theme_tab(self) -> QWidget:
+        from hallucination_checker.gui.theme import Theme
+
+        w = QWidget()
+        layout = QVBoxLayout(w)
+        layout.addWidget(QLabel('选择界面主题：'))
+
+        self._theme_combo = QComboBox()
+        themes = Theme.discover()
+        for theme in themes:
+            self._theme_combo.addItem(theme.name(), theme.dir_name())
+        layout.addWidget(self._theme_combo)
+
+        # 选中当前主题
+        if self._current_theme:
+            for i in range(self._theme_combo.count()):
+                if self._theme_combo.itemData(i) == self._current_theme.dir_name():
+                    self._theme_combo.setCurrentIndex(i)
+                    break
+
+        self._theme_combo.currentIndexChanged.connect(self._on_theme_changed)
+
+        layout.addSpacing(12)
+        layout.addWidget(QLabel('切换后即时生效，选择持久化到 workspace/U/settings.json。'))
+        layout.addStretch()
+        return w
+
+    def _on_theme_changed(self) -> None:
+        if self._theme_callback is None:
+            return
+        from hallucination_checker.gui.theme import Theme
+        dir_name = self._theme_combo.currentData()
+        if dir_name:
+            theme = Theme.find(dir_name)
+            if theme:
+                self._theme_callback(theme)
 
     # ---- 辅助操作 ----
 

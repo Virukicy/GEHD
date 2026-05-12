@@ -1,0 +1,89 @@
+/* 深夜主题 QSS */
+QMainWindow, QWidget {
+    background-color: #1E1E1E;
+    color: #E0E0E0;
+}
+QTableWidget {
+    background-color: #2D2D2D;
+    alternate-background-color: #333333;
+    gridline-color: #404040;
+    color: #E0E0E0;
+}
+QTableWidget::item {
+    color: #E0E0E0;
+}
+QHeaderView::section {
+    background-color: #333333;
+    color: #BDBDBD;
+    border: 1px solid #404040;
+    padding: 4px;
+}
+QListWidget {
+    background-color: #2D2D2D;
+    color: #E0E0E0;
+}
+QTabWidget::pane {
+    border: 1px solid #404040;
+    background-color: #2D2D2D;
+}
+QTabBar::tab {
+    background-color: #333333;
+    color: #BDBDBD;
+    padding: 6px 12px;
+    border: 1px solid #404040;
+}
+QTabBar::tab:selected {
+    background-color: #2D2D2D;
+    color: #E0E0E0;
+}
+QLineEdit, QPlainTextEdit, QTextBrowser {
+    background-color: #2D2D2D;
+    color: #E0E0E0;
+    border: 1px solid #404040;
+}
+QCheckBox, QLabel, QStatusBar {
+    color: #E0E0E0;
+}
+QPushButton {
+    background-color: #3D3D3D;
+    color: #E0E0E0;
+    border: 1px solid #555;
+    padding: 4px 12px;
+    border-radius: 3px;
+}
+QPushButton:hover {
+    background-color: #4D4D4D;
+}
+QPushButton:disabled {
+    color: #757575;
+}
+QMenu {
+    background-color: #2D2D2D;
+    color: #E0E0E0;
+    border: 1px solid #404040;
+}
+QMenu::item:selected {
+    background-color: #1565C0;
+}
+QSpinBox, QDoubleSpinBox {
+    background-color: #2D2D2D;
+    color: #E0E0E0;
+    border: 1px solid #404040;
+}
+QGroupBox {
+    color: #E0E0E0;
+    border: 1px solid #404040;
+    margin-top: 8px;
+    padding-top: 8px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    padding: 0 4px;
+}
+QScrollArea {
+    background-color: #1E1E1E;
+}
+QMessageBox {
+    background-color: #2D2D2D;
+    color: #E0E0E0;
+}
