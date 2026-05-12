@@ -50,8 +50,10 @@ v0.4.0-pre  →  v0.4.0-alpha  →  v0.4.0-beta  →  v0.4.0-rc  →  v0.4.0
 | | `config/search.json` | 搜索后端，从 `thresholds.l4` 迁移参数 |
 | | `config/thresholds.json` | 精简，`l4` 块移除（旧键保留 DeprecationWarning） |
 | LLM 适配层 | `engine/llm/` | `LLMAdapter` 抽象 + `OpenAIAdapter`（兼容 DeepSeek） |
+| 搜索适配层 | `engine/search/` | `SearchAdapter` 抽象 + `TavilyAdapter` + `DuckDuckGoAdapter`（与 LLM 适配层同构） |
+| 管道标准化中间格式 | `engine/pipeline.py` | `PipelineContext` TypedDict，统一各环节数据交换格式（L1-L3.7 输出、L4 核查结果、交叉校验共识均装入同一结构） |
 
-**验收**：120 测试全绿。纯规则模式下行为与 v0.3.0 完全一致。
+**验收**：120 测试全绿。纯规则模式下行为与 v0.3.0 完全一致。PipelineContext 数据流通过类型检查。
 
 **API 消耗**：0（纯规则 + mock 测试）。
 
@@ -66,6 +68,8 @@ v0.4.0-pre  →  v0.4.0-alpha  →  v0.4.0-beta  →  v0.4.0-rc  →  v0.4.0
 | `engine/llm/pre_filter.py` | 批量去噪：一次 API 调分拣候选 → 返回保留列表 |
 | pipeline 接线 | `config.llm_pre_filter=true` 时启动 |
 | `config/secrets.json` | 新增 `llm_api_key` |
+| LLM 前置校准机制 | `_l4_cache.json` 中标注 `must_retain: true` 的关键实体 → 前置过滤后检查是否被误删 |
+| 配置自动迁移 | `thresholds.json` 旧 `l4` 块首次加载时自动迁移到 `search.json`，写入 `.migrated` 标记，用户零感知 |
 
 **U 侧**：
 
@@ -75,7 +79,7 @@ v0.4.0-pre  →  v0.4.0-alpha  →  v0.4.0-beta  →  v0.4.0-rc  →  v0.4.0
 | 管道状态栏 | 主界面底部 |
 | LLM 配置 UI | 供应商 + 模型 + API Key 输入 |
 
-**验收**：entity_spoof 扫描，`l4_auto_verify=False`，LLM 前置开启 → L4 队列候选数从 19 降到 ≤8。
+**验收**：entity_spoof 扫描，`l4_auto_verify=False`，LLM 前置开启 → L4 队列候选数从 19 降到 ≤8，且所有 `must_retain` 实体未被误删。配置自动迁移（旧 `l4` 块 → `search.json`）生效。
 
 **API 消耗**：0（LLM 前置不触发 Tavily，QA 只做代码审查 + L4 队列数验证）。
 
@@ -89,7 +93,9 @@ v0.4.0-pre  →  v0.4.0-alpha  →  v0.4.0-beta  →  v0.4.0-rc  →  v0.4.0
 | H01 回归 | Tavily 已有缓存喂给 LLM 后置 → 验证纠正 verified_fake |
 | QA 验收 | entity_spoof 单文档全管道（≤3 次 Tavily） |
 
-**验收**：H01 "华为辰星科技" 从 verified_real 纠正为 verified_fake。
+| 模型漂移校准集 | entity_spoof 选 5 个关键候选（3 应保留 + 2 应过滤），LLM 管道运行后 QA 手动比对一致性 |
+
+**验收**：H01 "华为辰星科技" 从 verified_real 纠正为 verified_fake。校准集 5/5 通过。
 
 **API 消耗**：≤3 次 Tavily（仅 entity_spoof 一份文档一次全管道）。
 
@@ -132,4 +138,21 @@ v0.4.0-pre  →  v0.4.0-alpha  →  v0.4.0-beta  →  v0.4.0-rc  →  v0.4.0
 
 ---
 
-_审批: PM。执行顺序已确定。_
+## 六、v0.5.0 展望 —— 可审计性基础设施
+
+> v0.4.0 管道架构预留 `PipelineContext.decision_log: list[dict]` trace 字段，v0.5.0 实现完整决策追溯链。
+
+**方向**：GEHD 核心差异化——「可审计、可解释」——延伸为每个决策点的结构化追溯：
+
+```
+候选 "辰星微电子" 评分 60（中危）→
+  LLM前置: KEEP（原因: 含"微电子"后缀，半导体公司命名模式）→
+  联网核查: verified_real（来源: Tavily "北京辰星微电子科技有限公司"）→
+  LLM后置: 纠正→verified_fake（原因: 北京注册公司与文档上下文"B轮融资"不匹配）
+```
+
+**设计原则**：v0.4.0 仅预留 `decision_log` 字段（不实现逻辑），确保管道架构为审计能力留好接口，避免 v0.5.0 时重构。
+
+---
+
+_审批: PM。执行顺序已确定。最后更新: S (2026-05-13)。_
