@@ -92,13 +92,18 @@ def llm_post_filter(
                 'reason': verdict.get('reason', ''),
             })
 
-    # 若有纠正，重跑 L4 判决反写（升级 issue / 降级 warning）
+    # 若有纠正，内联反写 issues/warnings
     if corrections:
-        from ..checker import _feedback_l4_verdicts
         issues = context.get('issues', [])
         warnings = context.get('warnings', [])
         stats = context.get('stats', {})
-        _feedback_l4_verdicts(l4_queue, issues, warnings, stats, config)
+        for c in corrections:
+            word = c['entity']
+            issues.append(
+                f'[LLM后置纠正] 实体"{word}"经语义核查判定为虚构: {c["reason"]}'
+            )
+            warnings[:] = [w for w in warnings if word not in w]
+        stats['llm_post_corrections'] = len(corrections)
 
     decision = context.get('decision_log', [])
     decision.append({

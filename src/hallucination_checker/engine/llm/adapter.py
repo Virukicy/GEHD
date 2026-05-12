@@ -4,9 +4,9 @@ LLM 适配层 —— 抽象基类 + OpenAI 适配器 + 工厂函数。
 v0.4.0-rc: CLI/GUI 共享 create_llm_adapter_from_config()。
 """
 
+import json
 from abc import ABC, abstractmethod
 from pathlib import Path
-import json
 
 
 class LLMAdapter(ABC):

@@ -14,6 +14,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from docx.document import Document
 
+    from .llm.adapter import LLMAdapter
+
 from ..io.document_text import DocumentText
 from .config import GEHDConfig
 from .extractors.text_extractor import extract_all_text
@@ -27,7 +29,7 @@ from .layers.l37_declaration import deduplicate_declarations, detect_declaration
 
 def gehd_check(
     text: DocumentText, config: GEHDConfig, output_verify_queue: bool = False,
-    llm: 'LLMAdapter | None' = None,
+    llm: LLMAdapter | None = None,
 ) -> tuple[list[str], list[str], dict, list[dict]]:
     """GEHD 主核查入口（v0.4.0-rc 管道路由）。
 
@@ -153,17 +155,8 @@ def _gehd_check_impl(
     # L4: 验证队列 + 联网核查
     if output_verify_queue:
         l4_verify_queue = build_verify_queue(l25_ranked, l3_ranked)
-        if config.l4_auto_verify:
-            from .layers.l4_web_verify import get_verification_summary, verify_queue
-            l4_verify_queue = verify_queue(l4_verify_queue, config)
-            summary = get_verification_summary(l4_verify_queue)
-            stats['l4_verified_real'] = summary['verified_real']
-            stats['l4_verified_fake'] = summary['verified_fake']
+        # v0.5.0: L4 联网核查 + 判决反写提升到 pipeline.py 的 web_verify 阶段
         stats['l4_queue_size'] = len(l4_verify_queue)
-
-        # L4 判决反写：verified_fake → 升级 issues, verified_real → 降级 warnings
-        if config.l4_auto_verify and l4_verify_queue:
-            _feedback_l4_verdicts(l4_verify_queue, issues, warnings, stats, config)
 
         # P2-4: 证据链生成
         _build_evidence_chain(
@@ -247,8 +240,8 @@ def _feedback_l4_verdicts(
 ) -> None:
     """L4 验证结果反写 issues/warnings。
 
-    - verified_fake + score >= medium_threshold → 升级为 issue
-    - verified_real → 从 warnings 移除对应实体
+    v0.5.0: 主逻辑提升到 pipeline.py → _run_web_verify()。
+    此函数仅保留供测试兼容。
     """
     upgraded = 0
     downgraded = 0
@@ -267,7 +260,6 @@ def _feedback_l4_verdicts(
             upgraded += 1
 
         elif status == 'verified_real':
-            # 从 warnings 中移除包含该词的条目
             before = len(warnings)
             warnings[:] = [w for w in warnings if word not in w]
             downgraded += before - len(warnings)
