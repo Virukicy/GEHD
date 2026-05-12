@@ -74,7 +74,7 @@ def _load_pipeline_config() -> dict:
     try:
         import json
         with open(path, encoding='utf-8') as f:
-            data = json.load(f)
+            data: dict = json.load(f)
         return data.get('steps', {})
     except (OSError, json.JSONDecodeError):
         return {}
