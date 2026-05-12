@@ -90,20 +90,25 @@ GEHD项目/
 
 ## 三、六层引擎数据流
 
-```mermaid
-flowchart TD
-    INPUT["📄 .docx 文件"] --> EXTRACT["text_extractor.py<br/>提取段落+表格文本"]
-    EXTRACT --> L1["🔵 L1 白名单<br/>已知真实名词 → 跳过"]
-    L1 --> L2["🔴 L2 黑名单<br/>已知幻觉词 → 标记问题"]
-    L2 --> L25["🟡 L2.5 非实体检测<br/>统计金额/引述/时间线"]
-    L25 --> L3["🟠 L3 启发式评分<br/>正则提取 + 多维打分"]
-    L3 --> L36["🟣 L3.6 一致性检查<br/>高频实体/金额矛盾"]
-    L36 --> L37["🟤 L3.7 声明提取<br/>6类声明性构造检测"]
-    L37 --> L4["🟢 L4 验证队列<br/>生成待联网核查 JSON"]
-    L4 --> WEB["🌐 L4 联网核查<br/>Tavily + DuckDuckGo 双后端 → 4种结果标签"]
-    WEB --> EVID["📋 L4 证据链<br/>四段结构: scoring/consistency/verification/recommendation"]
-    EVID --> CROSS["🔄 P2-5 多模型交叉校验<br/>三路并行 → 强/弱/分歧共识"]
-    CROSS --> OUTPUT["📊 报告输出<br/>issues + warnings + stats"]
+```
+📄 .docx 文件
+    │
+    ▼
+文本提取器 (段落 + 表格)
+    │
+    ├── L1 白名单 ─── 已知真实词 → 跳过
+    ├── L2 黑名单 ─── 已知幻觉词 → 标记 issue
+    ├── L2.5 非实体 ── 统计金额 / 引述 / 时间线
+    ├── L3 启发式 ─── 正则提取 + 多维打分 (0-100)
+    ├── L3.6 一致性 ── 高频实体 / 金额矛盾
+    ├── L3.7 声明提取 ─ 6 类声明性构造检测
+    ├── L4 验证队列 ── 汇总候选 → _l4_queue.json
+    ├── L4 联网核查 ── Tavily / DuckDuckGo → 4 种标签
+    ├── L4 证据链 ─── 四段结构 (scoring / consistency / verification / recommendation)
+    └── P2-5 交叉校验 ─ 三路并行 → 强 / 弱 / 分歧共识
+            │
+            ▼
+       📊 报告输出 (issues + warnings + stats)
 ```
 
 ### 各层详解
@@ -143,29 +148,22 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    subgraph CLI["cli/main.py"]
+    subgraph CLI["cli/"]
         CHECK["check_docx()"]
     end
 
     subgraph IO["io/"]
-        READER["docx_reader.py"]
-        FMT["format_checks.py"]
-        REP["reporter.py"]
+        READER["docx_reader"]
+        FMT["format_checks"]
+        REP["reporter"]
     end
 
     subgraph ENGINE["engine/"]
-        CHK["checker.py<br/>gehd_check()"]
+        CHK["checker.py"]
         CFG["config.py"]
         EXT["extractors/"]
         subgraph LAYERS["layers/"]
-            L1["l1_whitelist"]
-            L2["l2_blacklist"]
-            L25["l25_nonentity"]
-            L3["l3_heuristic"]
-            L36["l36_consistency"]
-            L37["l37_declaration"]
-            L4["l4_verify"]
-            L4W["l4_web_verify"]
+            L1 L2 L25 L3 L36 L37 L4 L4W
         end
     end
 
@@ -175,6 +173,9 @@ flowchart LR
     CHK --> LAYERS
     LAYERS --> CFG
     FMT --> CFG
+    REP --> CFG
+    L3 --> L1
+```
     REP --> CFG
     L3 --> L1
 ```
