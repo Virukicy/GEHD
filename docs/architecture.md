@@ -1,6 +1,6 @@
 # GEHD 架构文档
 
-> **版本**：v0.4.0  
+> **版本**：v0.5.0-alpha  
 > **最后更新**：2026-05-13  
 > **目标读者**：AI 助手（Gemini/Claude/GPT/DeepSeek）或真人开发者  
 > **阅读顺序**：本文 → [development.md](./development.md) → [ai-guide.md](./ai-guide.md)（AI 用户）→ 代码
@@ -34,8 +34,8 @@ GEHD项目/
 │   ├── engine/                 # === 核心引擎层 ===
 │   │   ├── config.py           # 全局配置（阈值、白/黑名单、正则模式）
 │   │   ├── checker.py          # 主编排器：组合 L1→L4 全流程
-│   │   ├── pipeline.py         # 管道编排器（PipelineContext + run_pipeline，含 LLM 前/后置调度）
-│   │   ├── extractors/
+│   │   ├── pipeline.py         # 管道编排器（注册表驱动三路径 full/fast/offline，含 PipelineContext.status + STAGE_CONTRACTS + ADAPTER_CONTRACTS）
+│   │   ├── direct_verify.py    # LLM 直接核验（fast 路径，零搜索开销）
 │   │   │   └── text_extractor.py  # 从 docx 提取结构化文本块
 │   │   ├── layers/             # === 六层规则引擎 ===
 │   │   │   ├── l1_whitelist.py     # L1: 白名单放行
@@ -255,6 +255,7 @@ config/*.json（外部化）  >  engine/config.py（内置默认值）
 
 | 版本 | 日期 | 关键变更 |
 |------|------|------|
+| **v0.5.0-alpha** | 2026-05-13 | 契约式管道 + 注册表三路径 + direct_verify + PipelineContext.status |
 | **v0.4.0** | 2026-05-13 | 智能管道完整：LLM 前/后置 + GUI 管道选项卡 + S 组战略 |
 | **v0.4.0-beta** | 2026-05-13 | LLM 前置过滤器 + GUI 管道选项卡 + 配置自动迁移 |
 | **v0.4.0-alpha** | 2026-05-13 | 管道编排器 + LLM 适配层 + SearchAdapter 抽象 + 配置三分层 |
