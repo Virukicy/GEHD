@@ -1,7 +1,7 @@
 # GEHD — 文档幻觉核查工具
 
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/version-0.3.0--rc-informational)](https://github.com/Virukicy/GEHD)
+[![Version](https://img.shields.io/badge/version-0.3.0-informational)](https://github.com/Virukicy/GEHD)
 [![Tests](https://img.shields.io/badge/tests-114%2F114-brightgreen)](tests/)
 
 基于**纯规则引擎**的轻量级文档幻觉核查工具。输入 `.docx` 文档，自动检测 AI 生成内容中可能被编造的专有名词、统计数据、引述和时间线。
@@ -84,7 +84,7 @@ python -m hallucination_checker document.docx --verify
 - [x] **Iteration 2 完成** — 类型安全/mypy/Ruff/logging/异常处理/114测试/85%覆盖率
 - [x] **Iteration 3 完成** — P2-1 声明提取 + P2-2 适配层 + P2-3 联网核查 + P2-4 证据链 + P2-5 多模型交叉校验 + GUI 桌面应用
 
-当前版本：**v0.3.0-rc**
+当前版本：**v0.3.0**
 
 ---
 
