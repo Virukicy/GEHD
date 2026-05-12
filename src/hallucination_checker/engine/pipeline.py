@@ -44,16 +44,22 @@ def run_pipeline(
     pipeline_cfg = _load_pipeline_config()
 
     all_parts = [(p.location, p.text) for p in text.parts]
-    issues, warnings, stats, l4_queue = _gehd_check_impl(
+    issues, warnings, stats, l4_queue, l3_ranked = _gehd_check_impl(
         all_parts, text.full_text, config, output_verify_queue,
     )
+
+    # 从 L3 输出提取候选词（pre_filter 在验证前需要原始候选）
+    l3_candidates = [
+        {'word': c['word'], 'score': c.get('score', 0), 'category': c.get('category', '')}
+        for c in l3_ranked
+    ]
 
     context = PipelineContext(
         issues=issues,
         warnings=warnings,
         stats=stats,
         l4_queue=l4_queue,
-        candidates=l4_queue if l4_queue else [],  # v0.4.0-rc: 候选来自 L4 队列
+        candidates=l3_candidates,
         decision_log=[],
     )
 

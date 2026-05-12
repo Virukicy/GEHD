@@ -170,7 +170,7 @@ def _gehd_check_impl(
             l4_verify_queue, l3_candidates, consistency_issues
         )
 
-    return issues, warnings, stats, l4_verify_queue
+    return issues, warnings, stats, l4_verify_queue, l3_ranked
 
 
 def _build_evidence_chain(
