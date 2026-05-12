@@ -11,8 +11,11 @@
 from __future__ import annotations
 
 import json
+import html as _html
+import os
 import re
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -113,8 +116,22 @@ def _append_to_json_array(filepath: Path, key: str, word: str) -> None:
     if w and w not in items:
         items.append(w)
         data[key] = items
-        with open(filepath, 'w', encoding='utf-8') as f:
+        _atomic_json_write(filepath, data)
+
+
+def _atomic_json_write(filepath: Path, data: dict[str, Any]) -> None:
+    """原子写入 JSON：先写临时文件，再 os.replace 交换。"""
+    fd, tmp_name = tempfile.mkstemp(suffix='.tmp', dir=str(filepath.parent), prefix='gehd_')
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_name, filepath)
+    except Exception:
+        try:
+            os.unlink(tmp_name)
+        except OSError:
+            pass
+        raise
 
 
 # ---- 主题持久化 ----

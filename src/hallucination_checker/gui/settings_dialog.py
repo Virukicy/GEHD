@@ -5,6 +5,8 @@
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 from pathlib import Path
 from typing import Any, Callable
 
@@ -61,15 +63,29 @@ def _read_json_array(filepath: Path, key: str) -> list[str]:
 
 
 def _write_json_array(filepath: Path, key: str, items: list[str]) -> None:
-    """写入 JSON 文件指定 key 的数组，保留所有其他字段。"""
+    """原子写入 JSON 文件指定 key 的数组，保留所有其他字段。"""
     try:
         with open(filepath, encoding='utf-8') as f:
             data = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         data = {}
     data[key] = items
-    with open(filepath, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    _atomic_json_write(filepath, data)
+
+
+def _atomic_json_write(filepath: Path, data: dict[str, Any]) -> None:
+    """原子写入 JSON：先写临时文件，再 os.replace 交换。"""
+    fd, tmp_name = tempfile.mkstemp(suffix='.tmp', dir=str(filepath.parent), prefix='gehd_')
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_name, filepath)
+    except Exception:
+        try:
+            os.unlink(tmp_name)
+        except OSError:
+            pass
+        raise
 
 
 def _read_json_obj(filepath: Path) -> dict[str, Any]:
@@ -83,9 +99,8 @@ def _read_json_obj(filepath: Path) -> dict[str, Any]:
 
 
 def _write_json_obj(filepath: Path, data: dict[str, Any]) -> None:
-    """写整个 JSON 文件，保留缩进格式。"""
-    with open(filepath, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    """原子写入整个 JSON 文件。"""
+    _atomic_json_write(filepath, data)
 
 
 class SettingsDialog(QDialog):

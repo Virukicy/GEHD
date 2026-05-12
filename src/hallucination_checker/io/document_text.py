@@ -232,14 +232,19 @@ class DocumentText:
             raise ImportError('pip install pymupdf 以支持 PDF 格式') from None
 
         filepath = Path(filepath)
-        doc = fitz.open(str(filepath))
+        try:
+            doc = fitz.open(str(filepath))
+        except (ValueError, OSError, RuntimeError) as e:
+            raise ValueError(f'无法打开 PDF 文件（可能已损坏）: {filepath.name}') from e
         parts: list[TextPart] = []
 
-        for i, page in enumerate(doc, 1):
-            text = page.get_text().strip()
-            if text:
-                parts.append(TextPart(location=f'PDF-页{i}', text=text))
-        doc.close()
+        try:
+            for i, page in enumerate(doc, 1):
+                text = page.get_text().strip()
+                if text:
+                    parts.append(TextPart(location=f'PDF-页{i}', text=text))
+        finally:
+            doc.close()
 
         return cls(parts=tuple(parts))
 
@@ -251,22 +256,29 @@ class DocumentText:
         """
         try:
             from pptx import Presentation
+            from pptx.exc import PackageNotFoundError
         except ImportError:
             raise ImportError('pip install python-pptx 以支持 PPTX 格式') from None
 
         filepath = Path(filepath)
-        prs = Presentation(str(filepath))
+        try:
+            prs = Presentation(str(filepath))
+        except (PackageNotFoundError, ValueError, OSError) as e:
+            raise ValueError(f'无法打开 PPTX 文件（可能已损坏）: {filepath.name}') from e
         parts: list[TextPart] = []
 
-        for i, slide in enumerate(prs.slides, 1):
-            texts: list[str] = []
-            for shape in slide.shapes:
-                if shape.has_text_frame:
-                    for para in shape.text_frame.paragraphs:
-                        t = para.text.strip()
+        try:
+            for i, slide in enumerate(prs.slides, 1):
+                texts: list[str] = []
+                for shape in slide.shapes:
+                    if shape.has_text_frame:
+                        for para in shape.text_frame.paragraphs:
+                            t = para.text.strip()
                         if t:
                             texts.append(t)
-            if texts:
-                parts.append(TextPart(location=f'PPTX-幻灯片{i}', text='\n'.join(texts)))
+                if texts:
+                    parts.append(TextPart(location=f'PPTX-幻灯片{i}', text='\n'.join(texts)))
+        except RuntimeError as e:
+            raise ValueError(f'PPTX 文件处理失败: {filepath.name}') from e
 
         return cls(parts=tuple(parts))

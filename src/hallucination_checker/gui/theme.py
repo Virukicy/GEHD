@@ -18,8 +18,11 @@ class Theme:
     def __init__(self, dir_path: Path) -> None:
         self._dir = dir_path
         theme_file = dir_path / 'theme.json'
-        with open(theme_file, encoding='utf-8') as f:
-            self._data: dict = json.load(f)
+        try:
+            with open(theme_file, encoding='utf-8') as f:
+                self._data: dict = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            raise ValueError(f'主题文件无效: {theme_file}: {e}') from e
 
         qss_file = dir_path / 'style.qss'
         self._qss: str = qss_file.read_text(encoding='utf-8') if qss_file.exists() else ''
@@ -54,7 +57,10 @@ class Theme:
             return themes
         for child in sorted(base_dir.iterdir()):
             if child.is_dir() and (child / 'theme.json').exists():
-                themes.append(cls(child))
+                try:
+                    themes.append(cls(child))
+                except (ValueError, json.JSONDecodeError):
+                    pass  # 跳过损坏或格式错误的主题目录
         return themes
 
     @classmethod

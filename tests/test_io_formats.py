@@ -85,6 +85,18 @@ class TestPDF:
         finally:
             tmp.unlink(missing_ok=True)
 
+    def test_corrupted_pdf(self):
+        with tempfile.NamedTemporaryFile(
+            mode='w', suffix='.pdf', delete=False, encoding='utf-8',
+        ) as f:
+            f.write('这是一个损坏的PDF文件')
+            tmp = f.name
+        try:
+            with pytest.raises(ValueError, match='无法打开|已损坏'):
+                DocumentText.from_pdf(tmp)
+        finally:
+            Path(tmp).unlink(missing_ok=True)
+
 
 class TestPPTX:
     def test_basic_pptx(self):
@@ -104,3 +116,15 @@ class TestPPTX:
             assert '演示文稿标题' in doc.full_text
         finally:
             tmp.unlink(missing_ok=True)
+
+    def test_corrupted_pptx(self):
+        with tempfile.NamedTemporaryFile(
+            mode='w', suffix='.pptx', delete=False, encoding='utf-8',
+        ) as f:
+            f.write('这是一个损坏的PPTX文件')
+            tmp = f.name
+        try:
+            with pytest.raises(ValueError, match='无法打开|已损坏'):
+                DocumentText.from_pptx(tmp)
+        finally:
+            Path(tmp).unlink(missing_ok=True)
