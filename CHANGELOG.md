@@ -30,16 +30,19 @@
 
 ---
 
-## [0.3.1] — 2026-05-10
-
-### 修复
-- GUI 设置窗口无法打开（`_settings_dialog = None` + `hasattr` 守卫缺失）
-- GUI 联网核查闪退（同步 HTTP 阻塞主线程 → macOS 杀进程）
+## [0.3.1] — 2026-05-12
 
 ### 新增
-- GUI 多模型交叉校验入口（`gehd_cross_validate()` 接入）
-- 主窗口自动核查状态提示（"联网核查: 已启用/已关闭"）
-- 协作协议 7.6 执行证据标准
+- IO 七种新格式支持（TXT/MD/HTML/JSONL/CSV/PDF/PPTX）
+- GUI 全文高亮视图
+- GUI 三套主题系统（默认/暗色/色盲友好）
+- GUI 管道状态栏
+- L4 搜索后端 Tavily 集成（Tavily + DuckDuckGo 双后端 auto 智能切换）
+
+### 修复
+- L4 DuckDuckGo 中国大陆不可达
+- GUI 设置窗口无法打开
+- GUI 联网核查闪退（同步 HTTP 阻塞主线程）
 
 ---
 
