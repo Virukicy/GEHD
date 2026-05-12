@@ -185,7 +185,18 @@ v0.4.0 引入 LLM 管道后，GEHD 面临一个根本性矛盾：
 
 v0.5.0 的核心使命是**重新闭合审计链路**——让 LLM 管道的每一步决策都能被追溯。
 
-### 7.2 交付范围
+### 7.2 交付范围 —— 两件事，非九件事
+
+v0.5.0 看似需求多，实质归并为两个递进任务：
+
+| 任务 | 负责 | 内容 | 先行条件 |
+|------|:--:|------|------|
+| **架构升级** | E | 契约式管道（STAGE + ADAPTER）+ 四层耦合全解 + 多路径 full/fast/offline | 无 |
+| **审计链路** | E+U | decision_log 完整填充 + 审计视图（GUI）+ CLI --audit + 评分可解释性 | 架构升级完成 |
+
+**为什么先架构后审计**：decision_log 的填充依赖契约式管道的阶段验证框架。架构不升级，decision_log 的填充没有标准化入口。
+
+**交付清单**：
 
 | 项 | 说明 |
 |------|------|
@@ -302,12 +313,55 @@ ADAPTER_CONTRACTS: dict[str, dict] = {
 | #7 HTTP 400 崩溃 | JSON 容错加固（S2PM-009）+ adapter.chat() 异常标准化 |
 | #8 model 默认值丢弃 | ADAPTER_CONTRACTS.llm.forbidden_values → 启动时报错 |
 
-#### 7.3.5 改动范围
+#### 7.3.5 四层耦合全解 + 多路径管道
+
+v0.4.0 管道存在四层耦合，多路径（full/fast/offline）需要解耦后才能实现。v0.5.0 一并解决。
+
+**当前四层耦合 → v0.5.0 解法**：
+
+| 耦合 | 当前 | 解法 |
+|------|------|------|
+| ① pipeline → checker 直接 import + 解包 | `from .checker import _gehd_check_impl` + 解包 5 元组 | 规则引擎包装为注册阶段 `rules_engine`，pipeline 只知道「第一阶段」 |
+| ② 硬编码阶段 if 块 | `if llm_pre → / if llm_post →` | STAGES 注册表 + 路径配置，阶段顺序可配 |
+| ③ 共享可变 dict 无契约 | `context['candidates']` 谁都能读写 | STAGE_CONTRACTS.requires/produces + 启动时验证 |
+| ④ post_filter → checker 内部函数 | 后置越过管道调用 `_feedback_l4_verdicts` | 提升到 pipeline 层，作为统一「后处理」步骤 |
+
+**多路径管道**：解耦后支持三档验证模式，用户按需选择：
+
+```
+路径 A (mode='full', 高可信):
+  rules_engine → llm_pre_filter → web_verify → llm_post_filter → 后处理
+
+路径 B (mode='fast', 快速低成本):
+  rules_engine → llm_pre_filter → llm_direct_verify → 后处理
+                                    ↑ 纯 LLM 核验，跳过搜索
+
+路径 C (mode='offline', 零成本):
+  rules_engine → 后处理
+  （就是 v0.3.0 纯规则模式）
+```
+
+`pipeline.json` 增加 `mode` 字段取代逐个开关的手动组合：
+```json
+{"mode": "full"}    // 或 "fast" / "offline"
+```
+
+**路径 B 新增阶段 `llm_direct_verify`**：不同于后置纠正的「对比两个文本」，而是凭 LLM 知识直接判断词的真实性。提示词：
+> "根据你的知识，判断每个词在[类别]领域是否真实存在。返回 JSON"
+
+**GUI 联动**：设置页增加「验证模式」下拉框（完整/快速/离线），替代当前独立开关的逐个勾选。主窗口的进度条实时反映当前阶段名（而非统一「扫描中…」）。
+
+#### 7.3.6 改动范围（更新）
 
 | 文件 | 改动 | 行数 |
 |------|------|:--:|
-| `engine/pipeline.py` | 新增 STAGE_CONTRACTS + ADAPTER_CONTRACTS + `_validate_contracts()` | +50 |
-| `engine/llm/adapter.py` | `create_llm_adapter_from_config()` 读取并传递 model | 改 2 行 |
+| `engine/pipeline.py` | STAGE_CONTRACTS + ADAPTER_CONTRACTS + 阶段注册表 + `_validate_contracts()` + 多路径调度 | +80 |
+| `engine/llm/` | 新增 `direct_verify.py`（LLM 直接核验阶段） | +50 |
+| `engine/llm/adapter.py` | `create_llm_adapter_from_config()` 读取 model | 改 2 行 |
+| `engine/checker.py` | `_feedback_l4_verdicts` 提升到 pipeline 层 | -20 |
+| `config/pipeline.json` | 新增 `mode` 字段 | 改 3 行 |
+| `gui/settings_dialog.py` | 验证模式下拉框 + 独立开关同步联动 | +15 |
+| `gui/main_window.py` | 进度条实时阶段名 + 移除旧 cross_validate 独立路径 | +10 |
 | 其他阶段文件 | **零改动** | 0 |
 
 ### 7.4 审计视图示例
