@@ -33,21 +33,48 @@ def run_pipeline(
 ) -> PipelineContext:
     """运行全链路核查管道。
 
-    v0.4.0-alpha 阶段:
+    v0.4.0-beta 阶段:
       - 规则管道 (L1→L4) 与 v0.3.0 完全等价
-      - llm 参数预留，此版本忽略
+      - llm_pre 开关激活时，LLM 前置过滤候选实体
     """
+
     from .checker import gehd_check
+
+    # 加载管道配置
+    pipeline_cfg = _load_pipeline_config()
 
     issues, warnings, stats, l4_queue = gehd_check(
         text, config, output_verify_queue=output_verify_queue,
     )
 
-    return PipelineContext(
+    context = PipelineContext(
         issues=issues,
         warnings=warnings,
         stats=stats,
         l4_queue=l4_queue,
         candidates=[],  # v0.5.0 populate
-        decision_log=[],  # v0.5.0 populate
+        decision_log=[],
     )
+
+    # LLM 前置过滤（v0.4.0-beta）
+    if pipeline_cfg.get('llm_pre', False) and llm is not None:
+        from .llm.pre_filter import llm_pre_filter
+        context = llm_pre_filter(context, llm, config)
+
+    return context
+
+
+def _load_pipeline_config() -> dict:
+    """加载 config/pipeline.json 的 steps 节。"""
+    from .config import _find_config_dir
+    cfg_dir = _find_config_dir()
+    if cfg_dir is None:
+        return {}
+    path = cfg_dir / 'pipeline.json'
+    try:
+        import json
+        with open(path, encoding='utf-8') as f:
+            data = json.load(f)
+        return data.get('steps', {})
+    except (OSError, json.JSONDecodeError):
+        return {}

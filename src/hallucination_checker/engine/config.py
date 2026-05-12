@@ -22,7 +22,7 @@ from pathlib import Path
 # ============================================================
 # 版本信息（模块级，不属于配置数据）
 # ============================================================
-GEHD_VERSION = '0.4.0-alpha'
+GEHD_VERSION = '0.4.0-beta'
 GEHD_VERSION_DATE = '2026-05-09'
 GEHD_VERSION_HASH = 'v030alpha-p21-p22'
 
@@ -662,6 +662,7 @@ class GEHDConfig:
             kwargs.update(thresholds)
 
         # --- 搜索配置 (v0.4.0: 从 thresholds.json.l4 迁移至 search.json) ---
+        _migrate_l4_to_search(config_dir)
         search_cfg = _load_search_config(config_dir / 'search.json')
         if search_cfg is not None:
             kwargs.update(search_cfg)
@@ -766,8 +767,64 @@ def _load_thresholds(filepath: Path) -> dict | None:
         return None
 
 
+
+def _migrate_l4_to_search(config_dir: Path) -> None:
+    """v0.4.0 自动迁移：thresholds.json 旧 l4 块 → search.json。
+
+    条件: thresholds.json 存在且 l4 块含非 _deprecated 的实数键。
+    写入 search.json 后在 thresholds.json 写入 .migrated 标记。
+    """
+    thresholds_path = config_dir / 'thresholds.json'
+    search_path = config_dir / 'search.json'
+    if not thresholds_path.exists():
+        return
+
+    try:
+        with open(thresholds_path, encoding='utf-8') as f:
+            data = json.load(f)
+        l4 = data.get('l4', {})
+        real_keys = {k: v for k, v in l4.items() if not k.startswith('_')}
+        if not real_keys:
+            return  # 无实数键（已 migrated 或已 deprecated）
+    except (json.JSONDecodeError, OSError):
+        return
+
+    # 写入 search.json（不覆盖已有文件）
+    if not search_path.exists():
+        search_data = {}
+        for old_key, new_key in _SEARCH_MIGRATE_MAP.items():
+            if old_key in real_keys:
+                search_data[new_key] = real_keys[old_key]
+        if search_data:
+            search_data['_migrated_from'] = 'thresholds.json.l4'
+            try:
+                with open(search_path, 'w', encoding='utf-8') as f:
+                    json.dump(search_data, f, ensure_ascii=False, indent=2)
+            except OSError:
+                pass
+
+    # 标记 migrated
+    data['l4'] = {'_deprecated': '已迁移至 config/search.json', '_migrated': True}
+    for k, v in l4.items():
+        if not k.startswith('_'):
+            data['l4'][f'_old_{k}'] = v
+    try:
+        with open(thresholds_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except OSError:
+        pass
+
+
+_SEARCH_MIGRATE_MAP = {
+    'deep_search_threshold': 'deep_search_threshold',
+    'l4_search_timeout': 'timeout',
+    'search_provider': 'provider',
+    'auto_verify': 'auto_verify',
+}
+
+
 def _load_search_config(filepath: Path) -> dict | None:
-    """从 config/search.json 加载搜索配置（v0.4.0 迁移自 thresholds.l4）。"""
+    """从 config/search.json 加载搜索配置，映射到 GEHDConfig 字段。"""
     _search_key_map = {
         'provider': 'l4_search_provider',
         'deep_search_threshold': 'deep_search_threshold',

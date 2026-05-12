@@ -144,6 +144,7 @@ class SettingsDialog(QDialog):
         self._tabs.addTab(self._build_whitelist_tab(), '白名单')
         self._tabs.addTab(self._build_blacklist_tab(), '黑名单')
         self._tabs.addTab(self._build_thresholds_tab(), '阈值')
+        self._tabs.addTab(self._build_pipeline_tab(), '管道')
         self._tabs.addTab(self._build_theme_tab(), '主题')
         layout.addWidget(self._tabs)
 
@@ -247,29 +248,6 @@ class SettingsDialog(QDialog):
 
         layout.addWidget(score_group)
 
-        # L4 阈值组
-        l4_group = QGroupBox('L4 验证队列')
-        l4_form = QFormLayout(l4_group)
-
-        self._deep_search_threshold = QSpinBox()
-        self._deep_search_threshold.setRange(0, 100)
-        self._deep_search_threshold.setToolTip('≥此分的候选使用深度搜索（多引擎交叉验证）')
-        l4_form.addRow('深度搜索阈值：', self._deep_search_threshold)
-
-        self._l4_auto_verify = QCheckBox('扫描时自动执行联网核查')
-        self._l4_auto_verify.setToolTip('开启后，扫描时同步对候选词执行 Web 搜索验证')
-        l4_form.addRow('自动核查：', self._l4_auto_verify)
-
-        self._l4_search_timeout = QDoubleSpinBox()
-        self._l4_search_timeout.setRange(1.0, 30.0)
-        self._l4_search_timeout.setDecimals(1)
-        self._l4_search_timeout.setSingleStep(0.5)
-        self._l4_search_timeout.setSuffix(' 秒')
-        self._l4_search_timeout.setToolTip('联网搜索超时时间（秒）')
-        l4_form.addRow('搜索超时：', self._l4_search_timeout)
-
-        layout.addWidget(l4_group)
-
         # 文本处理参数组
         text_group = QGroupBox('文本处理')
         text_form = QFormLayout(text_group)
@@ -285,6 +263,75 @@ class SettingsDialog(QDialog):
         text_form.addRow('最短候选长度：', self._min_candidate_length)
 
         layout.addWidget(text_group)
+        layout.addStretch()
+        return scroll
+
+    # --- 管道 Tab ---
+
+    def _build_pipeline_tab(self) -> QWidget:
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        w = QWidget()
+        scroll.setWidget(w)
+        layout = QVBoxLayout(w)
+
+        # 管道步骤
+        steps_group = QGroupBox('管道步骤')
+        steps_layout = QVBoxLayout(steps_group)
+
+        self._pipe_cross_validate = QCheckBox('多模型交叉校验（三路并行，开销 3x）')
+        steps_layout.addWidget(self._pipe_cross_validate)
+
+        self._pipe_web_verify = QCheckBox('联网核查')
+        steps_layout.addWidget(self._pipe_web_verify)
+
+        # 联网核查子项
+        search_group = QGroupBox('联网核查设置')
+        search_form = QFormLayout(search_group)
+
+        self._pipe_search_provider = QComboBox()
+        self._pipe_search_provider.addItems(['auto', 'tavily', 'duckduckgo'])
+        self._pipe_search_provider.setToolTip('auto=优先Tavily回退DuckDuckGo')
+        search_form.addRow('搜索后端：', self._pipe_search_provider)
+
+        self._pipe_search_timeout = QDoubleSpinBox()
+        self._pipe_search_timeout.setRange(1.0, 30.0)
+        self._pipe_search_timeout.setDecimals(1)
+        self._pipe_search_timeout.setSingleStep(0.5)
+        self._pipe_search_timeout.setSuffix(' 秒')
+        search_form.addRow('超时：', self._pipe_search_timeout)
+
+        self._pipe_deep_search = QSpinBox()
+        self._pipe_deep_search.setRange(0, 100)
+        self._pipe_deep_search.setToolTip('≥此分的候选使用深度搜索')
+        search_form.addRow('深度搜索阈值：', self._pipe_deep_search)
+
+        steps_layout.addWidget(search_group)
+
+        self._pipe_llm_pre = QCheckBox('LLM 前置筛查')
+        steps_layout.addWidget(self._pipe_llm_pre)
+
+        llm_pre_group = QGroupBox('前置 LLM 设置')
+        llm_pre_form = QFormLayout(llm_pre_group)
+        self._pipe_llm_pre_model = QComboBox()
+        self._pipe_llm_pre_model.setEditable(True)
+        llm_pre_form.addRow('模型：', self._pipe_llm_pre_model)
+        steps_layout.addWidget(llm_pre_group)
+
+        self._pipe_llm_post = QCheckBox('LLM 后置判断')
+        steps_layout.addWidget(self._pipe_llm_post)
+
+        llm_post_group = QGroupBox('后置 LLM 设置')
+        llm_post_form = QFormLayout(llm_post_group)
+        self._pipe_llm_post_model = QComboBox()
+        self._pipe_llm_post_model.setEditable(True)
+        llm_post_form.addRow('模型：', self._pipe_llm_post_model)
+        steps_layout.addWidget(llm_post_group)
+
+        self._pipe_output_queue = QCheckBox('生成验证队列')
+        steps_layout.addWidget(self._pipe_output_queue)
+
+        layout.addWidget(steps_group)
         layout.addStretch()
         return scroll
 
@@ -354,6 +401,8 @@ class SettingsDialog(QDialog):
         self._load_whitelist()
         self._load_blacklist()
         self._load_thresholds()
+        self._load_pipeline()
+        self._load_search()
 
     def _load_whitelist(self) -> None:
         items = _read_json_array(self._whitelist_path, 'whitelist')
@@ -378,11 +427,6 @@ class SettingsDialog(QDialog):
         self._med_freq_bonus.setValue(scores.get('med_freq_bonus', 3))
         self._plausible_penalty.setValue(scores.get('plausible_char_penalty', -10))
 
-        l4 = data.get('l4', {})
-        self._deep_search_threshold.setValue(l4.get('deep_search_threshold', 55))
-        self._l4_auto_verify.setChecked(l4.get('auto_verify', False))
-        self._l4_search_timeout.setValue(float(l4.get('l4_search_timeout', 5.0)))
-
         text_proc = data.get('text_processing', {})
         self._context_window.setValue(text_proc.get('context_window_chars', 10))
         self._min_candidate_length.setValue(text_proc.get('min_candidate_length', 2))
@@ -391,6 +435,8 @@ class SettingsDialog(QDialog):
         self._save_whitelist()
         self._save_blacklist()
         self._save_thresholds()
+        self._save_pipeline()
+        self._save_search()
 
     def _save_whitelist(self) -> None:
         text = self._whitelist_edit.toPlainText().strip()
@@ -402,7 +448,57 @@ class SettingsDialog(QDialog):
         items = [line.strip() for line in text.split('\n') if line.strip()]
         _write_json_array(self._blacklist_path, 'blacklist', items)
 
-    def _save_thresholds(self) -> None:
+    def _load_pipeline(self) -> None:
+        data = _read_json_obj(_CONFIG_DIR / 'pipeline.json')
+        steps = data.get('steps', {})
+        self._pipe_cross_validate.setChecked(steps.get('cross_validate', False))
+        self._pipe_web_verify.setChecked(steps.get('web_verify', False))
+        self._pipe_llm_pre.setChecked(steps.get('llm_pre', False))
+        self._pipe_llm_post.setChecked(steps.get('llm_post', False))
+        self._pipe_output_queue.setChecked(steps.get('output_verify_queue', False))
+
+    def _save_pipeline(self) -> None:
+        data = _read_json_obj(_CONFIG_DIR / 'pipeline.json')
+        steps = data.setdefault('steps', {})
+        steps['cross_validate'] = self._pipe_cross_validate.isChecked()
+        steps['web_verify'] = self._pipe_web_verify.isChecked()
+        steps['llm_pre'] = self._pipe_llm_pre.isChecked()
+        steps['llm_post'] = self._pipe_llm_post.isChecked()
+        steps['output_verify_queue'] = self._pipe_output_queue.isChecked()
+        _write_json_obj(_CONFIG_DIR / 'pipeline.json', data)
+
+    def _load_search(self) -> None:
+        data = _read_json_obj(_CONFIG_DIR / 'search.json')
+        # 兼容旧 thresholds.json l4 块（迁移期）
+        if not data or 'provider' not in data:
+            old = _read_json_obj(self._thresholds_path)
+            l4 = old.get('l4', {})
+            self._pipe_search_provider.setCurrentText('auto')
+            self._pipe_deep_search.setValue(l4.get('deep_search_threshold', 55))
+            self._pipe_search_timeout.setValue(float(l4.get('l4_search_timeout', 5.0)))
+            return
+        provider = data.get('provider', 'auto')
+        idx = self._pipe_search_provider.findText(provider)
+        if idx >= 0:
+            self._pipe_search_provider.setCurrentIndex(idx)
+        self._pipe_deep_search.setValue(data.get('deep_search_threshold', 55))
+        self._pipe_search_timeout.setValue(float(data.get('timeout', 5.0)))
+
+        # LLM 模型列表
+        llm_data = _read_json_obj(_CONFIG_DIR / 'llm.json')
+        models = [llm_data.get('model', '')]
+        for combo in (self._pipe_llm_pre_model, self._pipe_llm_post_model):
+            combo.clear()
+            combo.addItems(models)
+
+    def _save_search(self) -> None:
+        data = _read_json_obj(_CONFIG_DIR / 'search.json')
+        if not data:
+            data = {}
+        data['provider'] = self._pipe_search_provider.currentText()
+        data['deep_search_threshold'] = self._pipe_deep_search.value()
+        data['timeout'] = self._pipe_search_timeout.value()
+        _write_json_obj(_CONFIG_DIR / 'search.json', data)
         data = self._thresholds_data or {}
         scores = data.setdefault('scores', {})
         scores['high_threshold'] = self._high_threshold.value()
@@ -413,11 +509,6 @@ class SettingsDialog(QDialog):
         scores['high_freq_bonus'] = self._high_freq_bonus.value()
         scores['med_freq_bonus'] = self._med_freq_bonus.value()
         scores['plausible_char_penalty'] = self._plausible_penalty.value()
-
-        l4 = data.setdefault('l4', {})
-        l4['deep_search_threshold'] = self._deep_search_threshold.value()
-        l4['auto_verify'] = self._l4_auto_verify.isChecked()
-        l4['l4_search_timeout'] = self._l4_search_timeout.value()
 
         text_proc = data.setdefault('text_processing', {})
         text_proc['context_window_chars'] = self._context_window.value()
