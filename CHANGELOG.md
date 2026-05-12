@@ -3,6 +3,33 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/) (SemVer 2.0)。
 
+## [0.3.0] — 2026-05-12
+
+### Iteration 3 完成 — 壁垒化 + 团队化
+
+#### 新增
+- L3.7 声明提取 — 6 类声明性构造检测
+- L4 联网自动核查 — Tavily + DuckDuckGo 双后端，auto 模式智能切换
+- L4 判决反写 — verified_fake 升级 issue，verified_real 移除 warning
+- P2-4 证据链 — 四段结构（scoring/consistency/verification/recommendation）
+- P2-5 多模型交叉校验 — 三路并行 + 强/弱/分歧共识
+- GUI 桌面应用 — PySide6 全功能（QThread 异步扫描 + 交叉校验入口）
+- 五方协作协议 — E/U/QA/D/PM，文件域分治，传递文档体系
+- 7.6 执行证据标准 — 防止多智能体 LLM 伪造回执
+
+#### 修复
+- GUI 设置窗口无法打开
+- GUI 联网核查闪退（同步 HTTP 阻塞主线程）
+- L4 DuckDuckGo 中国大陆不可达
+
+#### 质量
+- 测试: 120/120
+- mypy: 零错误
+- ruff: 零错误
+- L4 反写清理率: 80%（Warnings 108→22）
+
+---
+
 ## [0.3.1] — 2026-05-10
 
 ### 修复
