@@ -72,6 +72,8 @@ class GEHDConfig:
     deep_search_threshold: int = 55
     l4_search_timeout: float = 5.0
     l4_auto_verify: bool = False  # 是否在扫描时自动执行联网核查
+    l4_search_provider: str = 'auto'  # auto/duckduckgo/tavily
+    l4_tavily_api_key: str = ''  # 运行时注入
 
     # --- L1 白名单 ---
     whitelist: frozenset[str] = field(
@@ -725,6 +727,7 @@ def _load_thresholds(filepath: Path) -> dict | None:
             'deep_search_threshold': 'deep_search_threshold',
             'l4_search_timeout': 'l4_search_timeout',
             'auto_verify': 'l4_auto_verify',
+            'search_provider': 'l4_search_provider',
         }
 
         # 数值阈值
@@ -780,8 +783,37 @@ def load_config() -> GEHDConfig:
     """
     cfg_dir = _find_config_dir()
     if cfg_dir is not None:
-        return GEHDConfig.from_json_dir(cfg_dir)
-    return GEHDConfig.default()
+        config = GEHDConfig.from_json_dir(cfg_dir)
+    else:
+        config = GEHDConfig.default()
+    _load_secrets(config)
+    return config
+
+
+def _load_secrets(config: GEHDConfig) -> None:
+    """从 config/secrets.json 注入敏感值（API Key 等）。
+
+    GEHDConfig 是 frozen dataclass，用 object.__setattr__ 绕过冻结。
+    """
+    cfg_dir = _find_config_dir()
+    if cfg_dir is None:
+        return
+    secrets_path = cfg_dir / 'secrets.json'
+    if not secrets_path.exists():
+        return
+    try:
+        with open(secrets_path, encoding='utf-8') as f:
+            secrets = json.load(f)
+        api_key = secrets.get('tavily_api_key', '')
+        if api_key and not api_key.startswith('tvly-'):
+            warnings.warn(
+                'secrets.json 中 tavily_api_key 格式异常（应以 tvly- 开头），已忽略。',
+                stacklevel=2,
+            )
+            return
+        object.__setattr__(config, 'l4_tavily_api_key', api_key)
+    except (json.JSONDecodeError, OSError):
+        warnings.warn('secrets.json 读取失败，L4 Tavily 搜索降级。', stacklevel=2)
 
 
 # ---- 模块级默认实例（向后兼容） ----

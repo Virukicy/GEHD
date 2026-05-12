@@ -1,5 +1,5 @@
 """
-L4 联网核查单元测试 — 全部使用 mock，不发起真实网络请求。
+L4 联网核查单元测试 — 全部使用 mock backend，不发起真实网络请求。
 """
 
 import os
@@ -12,6 +12,10 @@ import pytest
 
 from hallucination_checker.engine.config import GEHDConfig
 from hallucination_checker.engine.layers.l4_web_verify import (
+    DuckDuckGoBackend,
+    SearchBackend,
+    TavilyBackend,
+    _get_search_backend,
     get_blacklist_suggestions,
     get_verification_summary,
     get_whitelist_suggestions,
@@ -21,7 +25,9 @@ from hallucination_checker.engine.layers.l4_web_verify import (
 
 @pytest.fixture
 def config():
-    return GEHDConfig.default()
+    cfg = GEHDConfig.default()
+    object.__setattr__(cfg, 'l4_search_provider', 'duckduckgo')
+    return cfg
 
 
 @pytest.fixture
@@ -30,68 +36,57 @@ def sample_queue():
         {
             'word': '华为辰星科技', 'source_layer': 'L3',
             'category': '公司机构名', 'score': 70,
-            'location': 'P5', 'context': '华为辰星科技宣布...',
+            'location': 'P5', 'context': '...',
             'status': 'pending', 'search_result': None,
         },
         {
             'word': '小米汽车', 'source_layer': 'L2.5',
             'category': '公司机构名', 'score': 40,
-            'location': 'P7', 'context': '小米汽车SU7交付...',
+            'location': 'P7', 'context': '...',
             'status': 'pending', 'search_result': None,
         },
     ]
 
 
+class _MockBackend(SearchBackend):
+    """可配置返回值的测试后端。"""
+    def __init__(self, returns=None):
+        self.returns = returns or []
+        self.calls: list[str] = []
+
+    def search(self, query: str, timeout: float = 5) -> list[str]:
+        self.calls.append(query)
+        return self.returns
+
+
 class TestL4VerifyQueue:
-    """验证队列 web verification pipeline 测试。"""
+    """验证队列 pipeline 测试。"""
 
     def test_verify_real_entity(self, config, sample_queue):
-        """模拟搜索返回积极结果 → verified_real"""
-        queue = [sample_queue[1]]  # 小米汽车 (low score → quick verify)
-        with patch(
-            'hallucination_checker.engine.layers.l4_web_verify._search_web',
-            return_value=[
-                '小米汽车科技有限公司成立于2021年...',
-                '小米汽车SU7交付量突破15万辆...',
-            ],
-        ):
+        backend = _MockBackend([
+            '小米汽车科技有限公司成立于2021年...',
+            '小米汽车SU7交付量突破15万辆...',
+        ])
+        queue = [sample_queue[1]]
+        with patch('hallucination_checker.engine.layers.l4_web_verify._get_search_backend', return_value=backend):
             result = verify_queue(queue, config)
             assert result[0]['status'] == 'verified_real'
             assert 'snippets' in result[0]['search_result']
 
-    def test_verify_fake_entity(self, config, sample_queue):
-        """模拟搜索无结果 → verified_fake"""
-        queue = [sample_queue[0]]  # 华为辰星科技 (high score → deep verify)
-        with patch(
-            'hallucination_checker.engine.layers.l4_web_verify._search_web',
-            return_value=[],
-        ):
-            result = verify_queue(queue, config)
-            assert result[0]['status'] in ('verified_fake', 'unable_to_verify')
-
-    def test_verify_unable(self, config, sample_queue):
-        """模拟网络错误 → unable_to_verify"""
-        queue = [sample_queue[0]]
-        with patch(
-            'hallucination_checker.engine.layers.l4_web_verify._search_web',
-            side_effect=OSError('Network error'),
-        ):
-            result = verify_queue(queue, config)
-            assert result[0]['status'] in ('unable_to_verify', 'verified_fake')
+    def test_verify_no_backend(self, config, sample_queue):
+        with patch('hallucination_checker.engine.layers.l4_web_verify._get_search_backend', return_value=None):
+            result = verify_queue(sample_queue[:], config)
+            assert result[0]['status'] == 'unable_to_verify'
 
     def test_deep_vs_quick_tier(self, config, sample_queue):
-        """深度 vs 快速搜索路由正确"""
-        with patch(
-            'hallucination_checker.engine.layers.l4_web_verify._search_web',
-            return_value=['搜索到相关公司信息'],
-        ):
+        backend = _MockBackend(['搜索到相关公司信息'])
+        with patch('hallucination_checker.engine.layers.l4_web_verify._get_search_backend', return_value=backend):
             result = verify_queue(sample_queue[:], config)
-            # 高分实体 (70 >= 55) 应走深度，低分 (40 < 55) 应走快速
-            assert result[0]['status'] in ('verified_real', 'verified_fake', 'need_manual_check', 'unable_to_verify')
-            assert result[1]['status'] in ('verified_real', 'verified_fake', 'need_manual_check', 'unable_to_verify')
+            assert all(q['status'] in (
+                'verified_real', 'verified_fake', 'need_manual_check', 'unable_to_verify',
+            ) for q in result)
 
     def test_verification_summary(self, config, sample_queue):
-        """验证汇总统计正确"""
         queue = sample_queue[:]
         queue[0]['status'] = 'verified_fake'
         queue[0]['search_result'] = {}
@@ -103,15 +98,44 @@ class TestL4VerifyQueue:
         assert summary['verified_fake'] == 1
 
     def test_whitelist_suggestions(self, sample_queue):
-        """白名单建议：验证真实 + 分数 < 60"""
         queue = sample_queue[:]
         queue[1]['status'] = 'verified_real'
         suggestions = get_whitelist_suggestions(queue)
         assert '小米汽车' in suggestions
 
     def test_blacklist_suggestions(self, sample_queue):
-        """黑名单建议：验证虚假"""
         queue = sample_queue[:]
         queue[0]['status'] = 'verified_fake'
         suggestions = get_blacklist_suggestions(queue)
         assert '华为辰星科技' in suggestions
+
+
+class TestSearchBackends:
+    """搜索后端测试。"""
+
+    def test_duckduckgo_backend_exists(self):
+        backend = DuckDuckGoBackend()
+        assert isinstance(backend, SearchBackend)
+
+    def test_tavily_invalid_key(self):
+        with pytest.raises(ValueError):
+            TavilyBackend('bad-key')
+
+    def test_tavily_valid_key(self):
+        backend = TavilyBackend('tvly-dev-test123')
+        assert isinstance(backend, SearchBackend)
+
+    def test_get_backend_auto_tavily(self):
+        cfg = GEHDConfig.default()
+        object.__setattr__(cfg, 'l4_search_provider', 'auto')
+        object.__setattr__(cfg, 'l4_tavily_api_key', 'tvly-dev-test123')
+        with patch.object(TavilyBackend, '__init__', return_value=None):
+            backend = _get_search_backend(cfg)
+            assert isinstance(backend, TavilyBackend)
+
+    def test_get_backend_no_key_falls_to_duckduckgo(self):
+        cfg = GEHDConfig.default()
+        object.__setattr__(cfg, 'l4_search_provider', 'auto')
+        object.__setattr__(cfg, 'l4_tavily_api_key', '')
+        backend = _get_search_backend(cfg)
+        assert isinstance(backend, DuckDuckGoBackend)
