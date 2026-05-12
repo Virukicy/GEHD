@@ -1,5 +1,5 @@
 """
-GEHD v0.3.0 核心回归测试套件
+GEHD v0.3.1 核心回归测试套件
 =============================
 
 覆盖范围:
@@ -203,8 +203,8 @@ class TestL4ProtocolStructure:
         assert '_verdict_schema' in protocol, '[L4协议] 缺少_verdict_schema'
 
         # 检查版本号
-        assert protocol['gehd_version'] == '0.3.0', (
-            f'[L4协议] 版本号应为0.3.0，实际为{protocol["gehd_version"]}'
+        assert protocol['gehd_version'] == '0.3.1', (
+            f'[L4协议] 版本号应为0.3.1，实际为{protocol["gehd_version"]}'
         )
 
         # 检查分级策略完整性
@@ -241,8 +241,8 @@ class TestEdgeCases:
 
     def test_version_string_in_output(self, check_result):
         """输出报告应包含当前版本号"""
-        assert 'v0.3.0' in check_result.output, (
-            'FAIL: 输出报告中未显示版本号v0.3.0 — 版本常量可能未更新'
+        assert 'v0.3.1' in check_result.output, (
+            'FAIL: 输出报告中未显示版本号v0.3.1 — 版本常量可能未更新'
         )
 
     def test_disclaimer_present(self, check_result):
