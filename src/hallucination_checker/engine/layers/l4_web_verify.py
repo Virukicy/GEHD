@@ -13,8 +13,9 @@ L4 联网自动核查 —— 对候选实体执行 Web 搜索验证。
 from __future__ import annotations
 
 import re
-from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
+
+from ..search.adapter import SearchAdapter
 
 if TYPE_CHECKING:
     from ..config import GEHDConfig
@@ -28,19 +29,9 @@ _NEGATION_INDICATORS = re.compile(
 )
 
 
-# ---- 搜索后端抽象 ----
-
-class SearchBackend(ABC):
-    """L4 搜索后端抽象基类。"""
-
-    @abstractmethod
-    def search(self, query: str, timeout: float = 5) -> list[str]:
-        """执行搜索，返回结果摘要列表。"""
-
-
 # ---- DuckDuckGo 后端 ----
 
-class DuckDuckGoBackend(SearchBackend):
+class DuckDuckGoBackend(SearchAdapter):
     """DuckDuckGo HTML 搜索（免 API Key）。"""
 
     def search(self, query: str, timeout: float = 5) -> list[str]:
@@ -76,7 +67,7 @@ class DuckDuckGoBackend(SearchBackend):
 
 # ---- Tavily 后端 ----
 
-class TavilyBackend(SearchBackend):
+class TavilyBackend(SearchAdapter):
     """Tavily Search API 后端（需 API Key）。"""
 
     def __init__(self, api_key: str):
@@ -110,7 +101,7 @@ class TavilyBackend(SearchBackend):
 
 # ---- 后端工厂 ----
 
-def _get_search_backend(config: GEHDConfig) -> SearchBackend | None:
+def _get_search_backend(config: GEHDConfig) -> SearchAdapter | None:
     """根据配置选择搜索后端。
 
     优先级:
@@ -189,7 +180,7 @@ def get_blacklist_suggestions(l4_queue: list[dict]) -> list[str]:
 
 
 def _quick_verify(
-    word: str, category: str, config: GEHDConfig, backend: SearchBackend,
+    word: str, category: str, config: GEHDConfig, backend: SearchAdapter,
 ) -> tuple[str, dict]:
     timeout = getattr(config, 'l4_search_timeout', 5.0)
     query = f'"{word}"'
@@ -220,7 +211,7 @@ def _quick_verify(
 
 
 def _deep_verify(
-    word: str, category: str, config: GEHDConfig, backend: SearchBackend,
+    word: str, category: str, config: GEHDConfig, backend: SearchAdapter,
 ) -> tuple[str, dict]:
     timeout = getattr(config, 'l4_search_timeout', 5.0) + 3
 

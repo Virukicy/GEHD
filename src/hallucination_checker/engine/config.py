@@ -22,7 +22,7 @@ from pathlib import Path
 # ============================================================
 # 版本信息（模块级，不属于配置数据）
 # ============================================================
-GEHD_VERSION = '0.3.1'
+GEHD_VERSION = '0.4.0-alpha'
 GEHD_VERSION_DATE = '2026-05-09'
 GEHD_VERSION_HASH = 'v030alpha-p21-p22'
 
@@ -661,6 +661,11 @@ class GEHDConfig:
         if thresholds is not None:
             kwargs.update(thresholds)
 
+        # --- 搜索配置 (v0.4.0: 从 thresholds.json.l4 迁移至 search.json) ---
+        search_cfg = _load_search_config(config_dir / 'search.json')
+        if search_cfg is not None:
+            kwargs.update(search_cfg)
+
         return cls(**kwargs)
 
 
@@ -757,6 +762,25 @@ def _load_thresholds(filepath: Path) -> dict | None:
                 result[field_name] = frozenset(items)
 
         return result if result else None
+    except (json.JSONDecodeError, FileNotFoundError):
+        return None
+
+
+def _load_search_config(filepath: Path) -> dict | None:
+    """从 config/search.json 加载搜索配置（v0.4.0 迁移自 thresholds.l4）。"""
+    _search_key_map = {
+        'provider': 'l4_search_provider',
+        'deep_search_threshold': 'deep_search_threshold',
+        'timeout': 'l4_search_timeout',
+    }
+    try:
+        with open(filepath, encoding='utf-8') as f:
+            data = json.load(f)
+        result = {}
+        for json_key, cfg_key in _search_key_map.items():
+            if json_key in data:
+                result[cfg_key] = data[json_key]
+        return result
     except (json.JSONDecodeError, FileNotFoundError):
         return None
 

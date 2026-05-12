@@ -32,14 +32,8 @@
     "_min_candidate_note": "候选实体词的最短长度"
   },
   "l4": {
-    "deep_search_threshold": 55,
-    "_deep_search_note": "≥此分的候选使用深度搜索（多引擎交叉验证），<此分使用快速搜索（单引擎判断）",
-    "l4_search_timeout": 5.0,
-    "_timeout_note": "L4 单次搜索超时时间（秒）",
-    "auto_verify": false,
-    "_auto_verify_note": "是否在文档扫描时自动执行联网核查（true=开启, false=仅建队列）",
-    "search_provider": "auto",
-    "_search_provider_note": "auto=优先Tavily回退DuckDuckGo, tavily=仅Tavily, duckduckgo=仅DuckDuckGo"
+    "_deprecated": "L4 搜索配置已迁移至 config/search.json",
+    "_removal": "v0.5.0 将移除本块，当前值不再生效"
   },
   "l3_behavior": {
     "_description": "L3 评分的场景特定参数（换场景时替换这些列表即可）",

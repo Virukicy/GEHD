@@ -1,0 +1,10 @@
+{
+  "_description": "搜索配置 — L4 联网核查后端/超时/阈值",
+  "_migrated_from": "thresholds.json → l4 块",
+  "provider": "auto",
+  "_provider_note": "auto=优先Tavily回退DuckDuckGo, tavily=仅Tavily, duckduckgo=仅DuckDuckGo",
+  "deep_search_threshold": 55,
+  "_deep_search_note": "≥此分的候选使用深度搜索（多查询交叉验证），<此分使用快速搜索（单查询判断）",
+  "timeout": 5.0,
+  "_timeout_note": "单次搜索超时时间（秒）"
+}

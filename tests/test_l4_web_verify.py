@@ -13,7 +13,7 @@ import pytest
 from hallucination_checker.engine.config import GEHDConfig
 from hallucination_checker.engine.layers.l4_web_verify import (
     DuckDuckGoBackend,
-    SearchBackend,
+    SearchAdapter,
     TavilyBackend,
     _get_search_backend,
     get_blacklist_suggestions,
@@ -48,7 +48,7 @@ def sample_queue():
     ]
 
 
-class _MockBackend(SearchBackend):
+class _MockBackend(SearchAdapter):
     """可配置返回值的测试后端。"""
     def __init__(self, returns=None):
         self.returns = returns or []
@@ -110,12 +110,12 @@ class TestL4VerifyQueue:
         assert '华为辰星科技' in suggestions
 
 
-class TestSearchBackends:
+class TestSearchAdapters:
     """搜索后端测试。"""
 
     def test_duckduckgo_backend_exists(self):
         backend = DuckDuckGoBackend()
-        assert isinstance(backend, SearchBackend)
+        assert isinstance(backend, SearchAdapter)
 
     def test_tavily_invalid_key(self):
         with pytest.raises(ValueError):
@@ -123,7 +123,7 @@ class TestSearchBackends:
 
     def test_tavily_valid_key(self):
         backend = TavilyBackend('tvly-dev-test123')
-        assert isinstance(backend, SearchBackend)
+        assert isinstance(backend, SearchAdapter)
 
     def test_get_backend_auto_tavily(self):
         cfg = GEHDConfig.default()

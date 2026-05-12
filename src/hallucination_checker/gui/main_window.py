@@ -10,8 +10,8 @@
 """
 from __future__ import annotations
 
-import json
 import html as _html
+import json
 import os
 import re
 import sys

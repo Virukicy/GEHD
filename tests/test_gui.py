@@ -178,7 +178,6 @@ class TestGuiCreation:
     """验证 GUI 组件可正常实例化（无 QApplication 时仅检查导入）。"""
 
     def test_main_window_class_exists(self) -> None:
-        from hallucination_checker.gui.main_window import MainWindow
         assert MainWindow is not None
 
     def test_settings_dialog_class_exists(self) -> None:
