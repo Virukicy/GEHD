@@ -262,6 +262,8 @@ def _dispatch_stage(
         })
 
     elif stage_name == 'llm_pre':
+        if llm is None:
+            return context
         from .llm.pre_filter import llm_pre_filter
         context = llm_pre_filter(context, llm, config)
 
@@ -269,10 +271,14 @@ def _dispatch_stage(
         context = _run_web_verify(context, config)
 
     elif stage_name == 'llm_post':
+        if llm is None:
+            return context
         from .llm.post_filter import llm_post_filter
         context = llm_post_filter(context, llm, config)
 
     elif stage_name == 'llm_direct_verify':
+        if llm is None:
+            return context
         from .llm.direct_verify import llm_direct_verify
         context = llm_direct_verify(context, llm, config)
 
