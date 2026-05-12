@@ -72,7 +72,7 @@ def _gehd_check_impl(
     full_text: str,
     config: GEHDConfig,
     output_verify_queue: bool = False,
-) -> tuple[list[str], list[str], dict, list[dict]]:
+) -> tuple[list[str], list[str], dict, list[dict], list[dict]]:
     """gehd_check 的核心实现——所有入口最终汇入此函数。"""
     issues: list[str] = []
     warnings: list[str] = []
