@@ -89,6 +89,15 @@ def extract_and_score(
                     plaus_penalty = config.score_plausible_char_penalty
                     score += plaus_penalty
 
+                # P2-6-A: 子串绕过实体评分加权
+                # 如"华为辰星科技"——含真实品牌前缀+虚构后缀
+                substr_bonus = 0
+                for brand in config.whitelist:
+                    if len(brand) >= 2 and len(word) > len(brand) and word.startswith(brand):
+                        substr_bonus = 15
+                        break
+                score += substr_bonus
+
                 final_score = max(config.score_minimum, score)
 
                 cw = config.context_window_chars
@@ -105,6 +114,7 @@ def extract_and_score(
                             'platform_bonus': platform_bonus,
                             'freq_bonus': freq_bonus,
                             'plausible_penalty': plaus_penalty,
+                            'substr_bonus': substr_bonus,
                         },
                     }
                 )
