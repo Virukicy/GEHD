@@ -6,9 +6,9 @@
     "cross_validate": false,
     "_cross_validate_note": "三路交叉校验（开销 3x，默认关闭，GUI 手动触发）",
     "llm_pre": false,
-    "_llm_pre_note": "LLM 前置过滤（v0.5.0 启用）",
+    "_llm_pre_note": "LLM 前置过滤（v0.4.0-rc 可用，需 llm 实例）",
     "llm_post": false,
-    "_llm_post_note": "LLM 后置裁决（v0.5.0 启用）",
+    "_llm_post_note": "LLM 后置语义验证（v0.4.0-rc 可用，需 llm 实例）",
     "web_verify": false,
     "_web_verify_note": "联网核查（需 l4_auto_verify=true 时生效）"
   }

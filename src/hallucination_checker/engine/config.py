@@ -829,6 +829,7 @@ def _load_search_config(filepath: Path) -> dict | None:
         'provider': 'l4_search_provider',
         'deep_search_threshold': 'deep_search_threshold',
         'timeout': 'l4_search_timeout',
+        'auto_verify': 'l4_auto_verify',
     }
     try:
         with open(filepath, encoding='utf-8') as f:

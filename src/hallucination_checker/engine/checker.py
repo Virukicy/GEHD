@@ -26,20 +26,23 @@ from .layers.l37_declaration import deduplicate_declarations, detect_declaration
 
 
 def gehd_check(
-    text: DocumentText, config: GEHDConfig, output_verify_queue: bool = False
+    text: DocumentText, config: GEHDConfig, output_verify_queue: bool = False,
+    llm: 'LLMAdapter | None' = None,
 ) -> tuple[list[str], list[str], dict, list[dict]]:
-    """GEHD 主核查入口（v0.3.0 冻结签名）。
+    """GEHD 主核查入口（v0.4.0-rc 管道路由）。
 
     Args:
         text: DocumentText — 格式无关的文档表示
         config: GEHDConfig 配置实例
         output_verify_queue: 是否构建 L4 验证队列
+        llm: LLMAdapter 实例，None 则纯规则模式
 
     Returns:
         (issues, warnings, stats, l4_verify_queue)
     """
-    all_parts = [(p.location, p.text) for p in text.parts]
-    return _gehd_check_impl(all_parts, text.full_text, config, output_verify_queue)
+    from .pipeline import run_pipeline
+    ctx = run_pipeline(text, config, llm, output_verify_queue=output_verify_queue)
+    return (ctx['issues'], ctx['warnings'], ctx['stats'], ctx['l4_queue'])
 
 
 def gehd_check_docx(

@@ -38,13 +38,14 @@ def run_pipeline(
       - llm_pre 开关激活时，LLM 前置过滤候选实体
     """
 
-    from .checker import gehd_check
+    from .checker import _gehd_check_impl
 
     # 加载管道配置
     pipeline_cfg = _load_pipeline_config()
 
-    issues, warnings, stats, l4_queue = gehd_check(
-        text, config, output_verify_queue=output_verify_queue,
+    all_parts = [(p.location, p.text) for p in text.parts]
+    issues, warnings, stats, l4_queue = _gehd_check_impl(
+        all_parts, text.full_text, config, output_verify_queue,
     )
 
     context = PipelineContext(
