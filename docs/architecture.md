@@ -1,6 +1,6 @@
 # GEHD 架构文档
 
-> **版本**：v0.4.0-alpha  
+> **版本**：v0.4.0-beta  
 > **最后更新**：2026-05-13  
 > **目标读者**：AI 助手（Gemini/Claude/GPT/DeepSeek）或真人开发者  
 > **阅读顺序**：本文 → [development.md](./development.md) → [ai-guide.md](./ai-guide.md)（AI 用户）→ 代码
@@ -47,7 +47,8 @@ GEHD项目/
 │   │   │   ├── l4_verify.py        # L4: 验证队列构建
 │   │   │   └── l4_web_verify.py    # L4: 联网自动核查
 │   │   ├── llm/                # === LLM 适配层 ===
-│   │   │   └── adapter.py      # LLMAdapter + OpenAIAdapter
+│   │   │   ├── adapter.py      # LLMAdapter + OpenAIAdapter
+│   │   │   └── pre_filter.py   # 前置过滤器：批量去噪，19候选压缩至≤8
 │   │   ├── search/             # === 搜索适配层 ===
 │   │   │   └── adapter.py      # SearchAdapter 抽象 + TavilyAdapter + DuckDuckGoAdapter
 │   │   └── scorers/            # 评分逻辑（预留，当前在 l3_heuristic.py）
@@ -218,6 +219,7 @@ config/*.json（外部化）  >  engine/config.py（内置默认值）
 | `pipeline.json` | 管道配置 | `dict` | 管道步骤与参数 |
 | `llm.json` | LLM 配置 | `dict` | LLM 模型与 API 参数 |
 | `search.json` | 搜索配置 | `dict` | 搜索后端与切换策略 |
+| — | `_migrate_l4_to_search()` | — | 自动迁移旧 thresholds.json l4 块到 search.json |
 
 ### 自定义配置
 
@@ -252,6 +254,7 @@ config/*.json（外部化）  >  engine/config.py（内置默认值）
 
 | 版本 | 日期 | 关键变更 |
 |------|------|------|
+| **v0.4.0-beta** | 2026-05-13 | LLM 前置过滤器 + GUI 管道选项卡 + 配置自动迁移 |
 | **v0.4.0-alpha** | 2026-05-13 | 管道编排器 + LLM 适配层 + SearchAdapter 抽象 + 配置三分层 |
 | **v0.3.0** | 2026-05-12 | P2-1~P2-5 全功能 + GUI 桌面应用 + 六方协作 |
 | **v0.2.0** | 2026-05-09 | Iteration 2 完成：类型安全+代码质量+日志+测试覆盖率 85% |
