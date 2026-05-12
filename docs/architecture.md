@@ -160,8 +160,11 @@ flowchart LR
 
     subgraph ENGINE["engine/"]
         CHK["checker.py"]
+        PIP["pipeline.py"]
         CFG["config.py"]
         EXT["extractors/"]
+        LLM["llm/"]
+        SEARCH["search/"]
         subgraph LAYERS["layers/"]
             L1["l1_whitelist"]
             L2["l2_blacklist"]
@@ -176,6 +179,7 @@ flowchart LR
 
     CLI --> IO
     CLI --> ENGINE
+    CHK --> PIP
     CHK --> EXT
     CHK --> LAYERS
     LAYERS --> CFG

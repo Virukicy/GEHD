@@ -1,7 +1,7 @@
 # GEHD 开发指南
 
-> **版本**：v0.3.0-alpha  
-> **最后更新**：2026-05-09  
+> **版本**：v0.4.0-alpha  
+> **最后更新**：2026-05-13  
 > **前置阅读**：先读 [architecture.md](./architecture.md) 了解项目结构
 
 ---
@@ -101,12 +101,12 @@ python -m hallucination_checker document.docx --verify
 # 全量测试
 pytest tests/ -v
 
-# 预期：76 passed
+# 预期：127 passed
 ```
 
 **注意**：测试依赖 `GEHD_RedTeam_v2_Document.docx`，路径见 `tests/conftest.py`。
 
-### 测试覆盖范围（v0.3.0-alpha）
+### 测试覆盖范围（v0.4.0-alpha）
 
 测试套件已扩展至 76 个测试，覆盖所有层和 IO 入口：
 
@@ -228,7 +228,7 @@ AI 代理使用 GEHD 的完整流程（详见 [ai-guide.md](./ai-guide.md)）：
 
 ## 七、当前已知技术债务
 
-> 最后验证：v0.3.0-alpha（2026-05-09）。来源：CHANGELOG.md、Q2A-20260509-001（QA 基线）、E2PM-20260509-001（E 进度）。
+> 最后验证：v0.4.0-alpha（2026-05-13）。
 
 | 编号 | 问题 | 状态 |
 |------|------|------|
