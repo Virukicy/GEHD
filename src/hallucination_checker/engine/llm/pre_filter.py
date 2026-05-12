@@ -7,6 +7,7 @@ v0.4.0-beta: 将候选实体打包为一次 API 请求，LLM 分拣垃圾/有效
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -60,11 +61,9 @@ def llm_pre_filter(
 
     try:
         reply = llm.chat(messages, temperature=0.0)
-        import json
         verdict = _safe_parse_json(reply)
         keep_idx = set(verdict.get('keep', []))
     except (json.JSONDecodeError, ValueError, KeyError, OSError):
-        # 解析失败 → 重试一次
         try:
             retry = llm.chat([
                 *messages,
@@ -73,9 +72,11 @@ def llm_pre_filter(
             verdict = _safe_parse_json(retry)
             keep_idx = set(verdict.get('keep', []))
         except (json.JSONDecodeError, ValueError, KeyError, OSError):
-            # 重试仍失败 → 保留全部候选（降级安全）
             context['decision_log'][-1]['filtered_count'] = len(candidates)
             return context
+    except Exception:
+        context['decision_log'][-1]['filtered_count'] = len(candidates)
+        return context
 
     # 分拣
     filtered = [candidates[i - 1] for i in keep_idx if 1 <= i <= len(candidates)]
