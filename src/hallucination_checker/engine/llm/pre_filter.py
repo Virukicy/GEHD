@@ -102,4 +102,5 @@ def _safe_parse_json(raw: str) -> dict:
     end = text.rfind('}')
     if start != -1 and end > start:
         text = text[start:end + 1]
-    return json.loads(text)
+    data: dict = json.loads(text)
+    return data

@@ -90,6 +90,7 @@ def create_llm_adapter_from_config() -> OpenAIAdapter | None:
 def _load_json(path: Path) -> dict:
     try:
         with open(path, encoding='utf-8') as f:
-            return json.load(f)
+            data: dict = json.load(f)
+            return data
     except (OSError, json.JSONDecodeError):
         return {}

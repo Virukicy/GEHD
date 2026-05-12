@@ -61,10 +61,10 @@ def gehd_check_docx(
     )
     all_parts = extract_all_text(doc)
     full_text = '\n'.join(text for _, text in all_parts)
-    issues, warnings, stats, l4_queue, _ = _gehd_check_impl(
+    issues, gehd_warnings, stats, l4_queue, _ = _gehd_check_impl(
         all_parts, full_text, config, output_verify_queue,
     )
-    return (issues, warnings, stats, l4_queue)
+    return (issues, gehd_warnings, stats, l4_queue)
 
 
 # ---- 核心实现（不暴露，两个入口共享） ----
