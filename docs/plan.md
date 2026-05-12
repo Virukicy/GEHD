@@ -109,6 +109,14 @@ v0.4.0-pre  →  v0.4.0-alpha  →  v0.4.0-beta  →  v0.4.0-rc  →  v0.4.0
 | 文档同步 | D | architecture.md 管道架构 + CHANGELOG v0.4.0 |
 | PM 决策存档 | PM | 第四轮闭环 |
 
+**第四轮闭环后 — 文档收尾（D）**：
+
+| 项 | 说明 | 原因 |
+|------|------|------|
+| ai-guide.md 全文管道化重写 | 新增管道操作流程、LLM 前置/后置说明、PipelineContext 使用 | 当前管道未完工，提前写是预告不是文档 |
+| development.md 管道 API 章节 | 补充 `run_pipeline()` / `PipelineContext` / 管道配置修改场景 | 同上 |
+| CHANGELOG v0.4.0 条目 | 补录管道编排器、双适配层、配置三分层、S 组入场 | 等 E 在终局阶段汇总写入 |
+
 **API 消耗**：0。
 
 ---
