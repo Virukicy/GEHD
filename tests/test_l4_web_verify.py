@@ -139,3 +139,48 @@ class TestSearchBackends:
         object.__setattr__(cfg, 'l4_tavily_api_key', '')
         backend = _get_search_backend(cfg)
         assert isinstance(backend, DuckDuckGoBackend)
+
+
+class TestL4FeedbackVerdicts:
+    """L4 判决反写逻辑测试。"""
+
+    def test_verified_fake_upgrades_issue(self):
+        from hallucination_checker.engine.checker import _feedback_l4_verdicts
+
+        l4_queue = [
+            {
+                'word': '母丑购', 'category': '电商平台名', 'score': 65,
+                'location': 'P1', 'status': 'verified_fake',
+                'search_result': {'confidence': 0.85},
+            },
+        ]
+        issues: list[str] = []
+        warnings: list[str] = ['[L3-中危] 母丑购 - 电商平台名 (70分)']
+        stats: dict = {}
+        cfg = GEHDConfig.default()
+
+        _feedback_l4_verdicts(l4_queue, issues, warnings, stats, cfg)
+
+        assert len(issues) >= 1
+        assert '母丑购' in issues[0]
+        assert stats['l4_upgraded_to_issue'] == 1
+
+    def test_verified_real_downgrades_warning(self):
+        from hallucination_checker.engine.checker import _feedback_l4_verdicts
+
+        l4_queue = [
+            {
+                'word': '小米汽车', 'category': '公司机构名', 'score': 40,
+                'location': 'P3', 'status': 'verified_real',
+                'search_result': {'confidence': 0.75},
+            },
+        ]
+        issues: list[str] = []
+        warnings: list[str] = ['[L3-中危] 小米汽车 - 公司机构名 (40分)']
+        stats: dict = {}
+        cfg = GEHDConfig.default()
+
+        _feedback_l4_verdicts(l4_queue, issues, warnings, stats, cfg)
+
+        assert len(warnings) == 0
+        assert stats['l4_downgraded_from_warning'] == 1

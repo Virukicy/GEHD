@@ -158,6 +158,10 @@ def _gehd_check_impl(
             stats['l4_verified_fake'] = summary['verified_fake']
         stats['l4_queue_size'] = len(l4_verify_queue)
 
+        # L4 判决反写：verified_fake → 升级 issues, verified_real → 降级 warnings
+        if config.l4_auto_verify and l4_verify_queue:
+            _feedback_l4_verdicts(l4_verify_queue, issues, warnings, stats, config)
+
         # P2-4: 证据链生成
         _build_evidence_chain(
             l4_verify_queue, l3_candidates, consistency_issues
@@ -229,3 +233,41 @@ def _recommend_action(verify_status: str, score: int) -> str:
     elif verify_status == 'unable_to_verify':
         return '建议人机协作验证'
     return '待处理'
+
+
+def _feedback_l4_verdicts(
+    l4_queue: list[dict],
+    issues: list[str],
+    warnings: list[str],
+    stats: dict,
+    config,
+) -> None:
+    """L4 验证结果反写 issues/warnings。
+
+    - verified_fake + score >= medium_threshold → 升级为 issue
+    - verified_real → 从 warnings 移除对应实体
+    """
+    upgraded = 0
+    downgraded = 0
+
+    for entity in l4_queue:
+        word = entity.get('word', '')
+        status = entity.get('status', 'pending')
+        score = entity.get('score', 0)
+
+        if status == 'verified_fake' and score >= config.score_medium_threshold:
+            location = entity.get('location', '?')
+            issues.append(
+                f'[L4确认虚构] 「{word}」（{entity.get("category", "")}）'
+                f' 位置 {location}，置信度 {entity.get("search_result", {}).get("confidence", 0):.0%}'
+            )
+            upgraded += 1
+
+        elif status == 'verified_real':
+            # 从 warnings 中移除包含该词的条目
+            before = len(warnings)
+            warnings[:] = [w for w in warnings if word not in w]
+            downgraded += before - len(warnings)
+
+    stats['l4_upgraded_to_issue'] = upgraded
+    stats['l4_downgraded_from_warning'] = downgraded
