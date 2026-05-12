@@ -3,8 +3,8 @@
   "_note": "API Key 写入 config/secrets.json → llm_api_key",
   "provider": "deepseek",
   "_provider_note": "DeepSeek 兼容 OpenAI 接口",
-  "base_url": "https://api.deepseek.com/v1",
-  "model": "deepseek-chat",
+  "base_url": "https://api.deepseek.com",
+  "model": "deepseek-v4-flash",
   "temperature": 0.0,
   "max_tokens": 256
 }
