@@ -183,9 +183,6 @@ flowchart LR
     REP --> CFG
     L3 --> L1
 ```
-    REP --> CFG
-    L3 --> L1
-```
 
 **依赖方向**：`cli` → `io` + `engine` → `layers` → `config`（单向，无循环）
 
