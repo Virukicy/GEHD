@@ -252,6 +252,8 @@ def _dispatch_stage(
     config: GEHDConfig | None = None,
 ) -> PipelineContext:
     """根据阶段名调用具体阶段函数。"""
+    if config is None:
+        return context
     if stage_name == 'cross_validate':
         # v0.5.0: cross_validate 需要 DocumentText 上下文，管道调度暂存 decision_log
         context.setdefault('decision_log', []).append({
@@ -338,7 +340,8 @@ def _load_pipeline_config() -> dict:
     path = cfg_dir / 'pipeline.json'
     try:
         with open(path, encoding='utf-8') as f:
-            return json.load(f)
+            data: dict = json.load(f)
+        return data
     except (OSError, json.JSONDecodeError):
         return {}
 
