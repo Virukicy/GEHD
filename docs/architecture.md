@@ -163,7 +163,14 @@ flowchart LR
         CFG["config.py"]
         EXT["extractors/"]
         subgraph LAYERS["layers/"]
-            L1 L2 L25 L3 L36 L37 L4 L4W
+            L1["l1_whitelist"]
+            L2["l2_blacklist"]
+            L25["l25_nonentity"]
+            L3["l3_heuristic"]
+            L36["l36_consistency"]
+            L37["l37_declaration"]
+            L4["l4_verify"]
+            L4W["l4_web_verify"]
         end
     end
 
