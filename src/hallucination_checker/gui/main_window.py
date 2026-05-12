@@ -289,6 +289,7 @@ class MainWindow(QMainWindow):
         self._current_warnings: list[str] = []
         self._current_l4_queue: list[dict[str, Any]] = []
         self._current_config: Any = None
+        self._current_text: Any = None  # DocumentText 实例，供文档视图渲染
         self._settings_dialog: Any = None
         self._verified_real_label: QLabel | None = None
         self._verified_fake_label: QLabel | None = None
@@ -452,6 +453,12 @@ class MainWindow(QMainWindow):
 
         self._result_tabs.addTab(self._l4_tab, '验证队列 (0)')
 
+        # 全文文档视图
+        self._doc_view = QTextBrowser()
+        self._doc_view.setOpenExternalLinks(False)
+        self._doc_view.setReadOnly(True)
+        self._result_tabs.addTab(self._doc_view, '文档视图')
+
         # 当切换到 L4 标签页时，更新一键执行按钮状态
         self._result_tabs.currentChanged.connect(self._on_tab_changed)
 
@@ -511,6 +518,8 @@ class MainWindow(QMainWindow):
         self._scan_btn.setText('扫描中...')
         self._statusbar.showMessage('扫描中...')
 
+        self._current_text = text  # 保存文档供全文视图渲染
+
         self._worker = ScanWorker(text, config, output_l4, cross_validate, self)
         self._worker.finished.connect(self._on_scan_finished)
         self._worker.error_msg.connect(self._on_scan_error)
@@ -532,6 +541,7 @@ class MainWindow(QMainWindow):
 
         self._refresh_stats(stats)
         self._refresh_results(issues, warnings, l4_queue, config)
+        self._refresh_document_view()
 
         self._scan_btn.setEnabled(True)
         self._scan_btn.setText('重新扫描')
@@ -786,6 +796,113 @@ class MainWindow(QMainWindow):
         self._result_tabs.setTabText(2, f'验证队列 ({self._l4_table.rowCount()})')
         self._update_action_button()
         self._statusbar.showMessage(f'已执行：{recommendation} — "{word}"')
+
+    # ---- 文档视图 ----
+
+    def _refresh_document_view(self) -> None:
+        """生成全文 HTML 并渲染到文档视图标签页。"""
+        text = self._current_text
+        if text is None:
+            self._doc_view.setHtml('<p style="color:#999;">请先扫描文档。</p>')
+            return
+
+        # 解析所有 issue/warning → (location, keyword, severity)
+        # 优先级：issue(高)>warning(中)>verified_real(绿)>verified_fake(红)
+        highlights: dict[str, list[tuple[str, str]]] = {}  # loc → [(word, severity)]
+
+        for issue in self._current_issues:
+            loc, word = self._parse_location_word(issue)
+            if loc:
+                highlights.setdefault(loc, []).append((word, 'issue'))
+
+        for warning in self._current_warnings:
+            loc, word = self._parse_location_word(warning)
+            if loc:
+                highlights.setdefault(loc, []).append((word, 'warning'))
+
+        for entry in self._current_l4_queue:
+            loc = entry.get('location', '')
+            word = entry.get('word', '')
+            status = entry.get('status', 'pending')
+            if loc and word:
+                sev = 'verified_real' if status == 'verified_real' else 'l4_pending'
+                highlights.setdefault(loc, []).append((word, sev))
+
+        # 构建 HTML
+        parts_html: list[str] = []
+        for part in text.parts:
+            loc = part.location
+            part_text = part.text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            display_label = part.display
+
+            loc_highlights = highlights.get(loc, [])
+            if loc_highlights:
+                # 按词长降序，长词优先匹配
+                for word, severity in sorted(loc_highlights, key=lambda x: -len(x[0])):
+                    css_class = {
+                        'issue': 'hl-issue',
+                        'warning': 'hl-warning',
+                        'verified_real': 'hl-real',
+                        'l4_pending': 'hl-l4',
+                    }.get(severity, 'hl-info')
+                    title_attr = {
+                        'issue': '高危',
+                        'warning': '中危',
+                        'verified_real': '已验证真',
+                        'l4_pending': 'L4待验证',
+                    }.get(severity, '')
+                    escaped = word.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
+                    if escaped in part_text:
+                        part_text = part_text.replace(
+                            escaped,
+                            f'<span class="{css_class}" title="{title_attr}">{escaped}</span>'
+                        )
+
+            loc_tag = f' <small style="color:#999;">[{display_label}]</small>'
+            parts_html.append(f'<p><span class="loc-label">{loc_tag}</span>{part_text}</p>')
+
+        body = '\n'.join(parts_html) if parts_html else '<p style="color:#999;">无内容</p>'
+        html = f'''<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+  body {{ font-family: -apple-system, sans-serif; font-size: 14px; line-height: 1.8; margin: 24px; color: #333; }}
+  .loc-label {{ color: #aaa; font-size: 12px; margin-right: 8px; }}
+  .hl-issue {{ background-color: #FFCDD2; padding: 1px 3px; border-radius: 2px; cursor: pointer; }}
+  .hl-warning {{ background-color: #FFE0B2; padding: 1px 3px; border-radius: 2px; cursor: pointer; }}
+  .hl-real {{ background-color: #C8E6C9; padding: 1px 3px; border-radius: 2px; text-decoration: line-through; }}
+  .hl-l4 {{ background-color: #E1BEE7; padding: 1px 3px; border-radius: 2px; cursor: pointer; }}
+  .hl-info {{ background-color: #F5F5F5; padding: 1px 3px; }}
+  .legend {{ position: fixed; right: 20px; top: 20px; background: #FFF; border: 1px solid #DDD; border-radius: 6px; padding: 12px; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }}
+  .legend-item {{ margin: 4px 0; }}
+  .legend-swatch {{ display: inline-block; width: 14px; height: 14px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }}
+  .stats-bar {{ margin-bottom: 16px; padding: 8px 12px; background: #F5F5F5; border-radius: 4px; font-size: 13px; }}
+</style></head><body>
+<div class="legend">
+  <div class="legend-item"><span class="legend-swatch" style="background:#FFCDD2"></span> 高危 (Issue)</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#FFE0B2"></span> 中危 (Warning)</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#C8E6C9"></span> 已验证真</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#E1BEE7"></span> L4 待验证</div>
+</div>
+<div class="stats-bar">
+  问题: {len(self._current_issues)} | 警告: {len(self._current_warnings)} | 候选: {len(self._current_l4_queue)} | 段落: {len(text.parts)}
+</div>
+{body}
+</body></html>'''
+        self._doc_view.setHtml(html)
+
+    @staticmethod
+    def _parse_location_word(text: str) -> tuple[str, str]:
+        """从 issue/warning 文本中提取 (位置标识, 关键词)。"""
+        import re as _re
+        # 位置标识：P4, P12, T2[3,1] 等
+        loc_m = _re.search(r'\b(P\d+|T\d+\[\d+,\d+\])\b', text)
+        location = loc_m.group(1) if loc_m else ''
+        # 关键词：引号内文本
+        word_m = _re.search(r'["\u201c]([^"\u201d]+)["\u201d]', text)
+        if not word_m:
+            word_m = _re.search(r"'([^']+)'", text)
+        keyword = word_m.group(1) if word_m else ''
+        return location, keyword
 
     # ---- 右键菜单：问题/警告列表 ----
 
