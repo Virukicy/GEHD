@@ -48,7 +48,7 @@ GEHD项目/
 │   │   └── scorers/            # 评分逻辑（预留，当前在 l3_heuristic.py）
 │   │
 │   ├── io/                     # === 输入输出层 ===
-│   │   ├── document_text.py    # 格式无关的文档中间表示（DocumentText）
+│   │   ├── document_text.py    # 格式无关文档中间表示，8种工厂方法（DOCX/TXT/MD/HTML/JSONL/CSV/PDF/PPTX）
 │   │   ├── docx_reader.py      # 文档加载 + 异常处理
 │   │   ├── format_checks.py    # Check 1-5: 基础格式检查
 │   │   └── reporter.py         # 报告格式化输出
@@ -56,7 +56,7 @@ GEHD项目/
 │   ├── cli/                    # === 命令行入口（薄层） ===
 │   │   └── main.py             # 参数解析 + 流程编排
 │   │
-│   └── gui/                    # GUI 层（PySide6 桌面应用）
+│   └── gui/                    # GUI 层（PySide6 桌面应用：全文高亮、三套主题、管道状态栏、QThread 异步扫描）
 │
 ├── config/                     # === 外部化配置（JSON） ===
 │   ├── whitelist.json          # L1 白名单（可编辑，引擎自动加载）
@@ -95,7 +95,7 @@ flowchart TD
     L3 --> L36["🟣 L3.6 一致性检查<br/>高频实体/金额矛盾"]
     L36 --> L37["🟤 L3.7 声明提取<br/>6类声明性构造检测"]
     L37 --> L4["🟢 L4 验证队列<br/>生成待联网核查 JSON"]
-    L4 --> WEB["🌐 L4 联网核查<br/>DuckDuckGo 两阶验证 → 4种结果标签"]
+    L4 --> WEB["🌐 L4 联网核查<br/>Tavily + DuckDuckGo 双后端 → 4种结果标签"]
     WEB --> EVID["📋 L4 证据链<br/>四段结构: scoring/consistency/verification/recommendation"]
     EVID --> CROSS["🔄 P2-5 多模型交叉校验<br/>三路并行 → 强/弱/分歧共识"]
     CROSS --> OUTPUT["📊 报告输出<br/>issues + warnings + stats"]
@@ -112,7 +112,7 @@ flowchart TD
 | **L3.6** | `l36_consistency.py` | L3 候选列表 | warnings | 同实体出现≥3次标记；同段落多金额共存标记 |
 | **L3.7** | `l37_declaration.py` | 所有文本 | issues | 6类声明性构造检测（语义声明、断言、因果、量化、对比、条件） |
 | **L4** | `l4_verify.py` | L2.5+L3 候选 | JSON 文件 | 汇总候选 → 按深度搜索阈值分深度/快速搜索 → 导出 `_l4_queue.json` |
-| **L4 联网** | `l4_web_verify.py` | L4 队列 | 验证结果 | DuckDuckGo 两阶搜索验证 → 4种结果标签（verified_real/verified_fake/need_manual_check/unable_to_verify） |
+| **L4 联网** | `l4_web_verify.py` | L4 队列 | 验证结果 | Tavily + DuckDuckGo 双后端自动切换 → 4种结果标签（verified_real/verified_fake/need_manual_check/unable_to_verify） |
 | **L4 证据链** | `checker.py`（集成） | 验证结果 + 原始评分 | 证据链 | 四段结构：scoring（评分维度详述）/ consistency（一致性信号）/ verification（联网验证结果）/ recommendation（最终建议） |
 | **P2-5 交叉校验** | `cross_validate.py` | 多源验证结果 | 共识报告 | 三路并行验证 → 强共识/弱共识/分歧三档 |
 
@@ -199,6 +199,7 @@ config/*.json（外部化）  >  engine/config.py（内置默认值）
 | `l25_patterns.json` | `L25_PATTERNS` | `list[tuple]` | L2.5 非实体检测正则 |
 | `exclude_words.json` | `EXCLUDE_WORDS` | `set[str]` | L3 排除词 |
 | `adjective_prefixes.json` | `ADJECTIVE_PREFIXES` | `set[str]` | L3.5 形容词前缀 |
+| `secrets.json` | `TAVILY_API_KEY` 等 | `str` | L4 搜索后端 API 密钥 |
 | `thresholds.json` | `SCORE_*` 常量 + 文本参数 | `int` | 评分阈值、窗口大小等 |
 
 ### 自定义配置
@@ -224,7 +225,7 @@ config/*.json（外部化）  >  engine/config.py（内置默认值）
 | `tests/test_gui.py` | GUI 组件测试 | 若干 |
 | `tests/test_layers/` | 分层独立测试 | 若干 |
 | `tests/test_io/` | IO 层独立测试 | 若干 |
-| **合计** | | **114** |
+| **合计** | | **125** |
 
 **运行**：`pytest tests/ -v`
 
