@@ -258,6 +258,15 @@ class ScanWorker(QThread):
         self._output_l4 = output_l4
         self._cross_validate = cross_validate
 
+    @staticmethod
+    def _create_llm():
+        """根据 pipeline.json 创建 LLM 适配器，None 则纯规则。"""
+        try:
+            from hallucination_checker.engine.llm.adapter import create_llm_adapter_from_config
+            return create_llm_adapter_from_config()
+        except Exception:
+            return None
+
     def run(self) -> None:
         try:
             if self._cross_validate:
@@ -271,7 +280,8 @@ class ScanWorker(QThread):
                 else:
                     self.progress.emit('扫描中...')
                 issues, warnings, stats, l4_queue = gehd_check(
-                    self._text, self._config, output_verify_queue=self._output_l4
+                    self._text, self._config, output_verify_queue=self._output_l4,
+                    llm=self._create_llm(),
                 )
             self.finished.emit({
                 'issues': issues, 'warnings': warnings,

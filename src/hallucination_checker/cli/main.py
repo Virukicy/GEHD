@@ -64,7 +64,8 @@ def check_docx(
     all_warnings.extend(check_long_text(doc, config))
 
     # GEHD 幻觉核查（v0.4.0-rc 管道路由）
-    llm = _create_llm_adapter(config)
+    from ..engine.llm.adapter import create_llm_adapter_from_config
+    llm = create_llm_adapter_from_config()
     gehd_issues, gehd_warnings, gehd_stats, l4_queue = gehd_check(
         text, config, output_verify_queue=do_verify, llm=llm
     )
@@ -92,76 +93,6 @@ def check_docx(
         len(l4_queue) if do_verify else 0,
     )
     return ok, l4_queue if do_verify else None
-
-
-def _create_llm_adapter(config):
-    """根据 pipeline.json 和 secrets.json 创建 LLM 适配器。
-
-    仅在 pipeline.llm_pre 或 llm_post 为 true 时创建，
-    否则返回 None（纯规则模式）。
-    """
-    # 检查管道开关
-    pipeline_cfg = _load_pipeline_cfg()
-    needs_llm = pipeline_cfg.get('llm_pre', False) or pipeline_cfg.get('llm_post', False)
-    if not needs_llm:
-        return None
-
-    # 加载 LLM 配置
-    llm_cfg = _load_llm_cfg()
-    api_key = _load_secret('llm_api_key')
-    if not api_key:
-        print('[GEHD] LLM 已启用但 secrets.json 中 llm_api_key 为空', file=sys.stderr)
-        return None
-
-    from ..engine.llm.adapter import OpenAIAdapter
-    return OpenAIAdapter(api_key=api_key, base_url=llm_cfg.get('base_url', 'https://api.openai.com/v1'))
-
-
-def _load_pipeline_cfg() -> dict:
-    import json
-    from pathlib import Path
-    from ..engine.config import _find_config_dir
-    cfg_dir = _find_config_dir()
-    if cfg_dir is None:
-        return {}
-    path = cfg_dir / 'pipeline.json'
-    try:
-        with open(path, encoding='utf-8') as f:
-            data: dict = json.load(f)
-        return data.get('steps', {})
-    except (OSError, json.JSONDecodeError):
-        return {}
-
-
-def _load_llm_cfg() -> dict:
-    import json
-    from pathlib import Path
-    from ..engine.config import _find_config_dir
-    cfg_dir = _find_config_dir()
-    if cfg_dir is None:
-        return {}
-    path = cfg_dir / 'llm.json'
-    try:
-        with open(path, encoding='utf-8') as f:
-            return json.load(f)
-    except (OSError, json.JSONDecodeError):
-        return {}
-
-
-def _load_secret(key: str) -> str:
-    import json
-    from pathlib import Path
-    from ..engine.config import _find_config_dir
-    cfg_dir = _find_config_dir()
-    if cfg_dir is None:
-        return ''
-    path = cfg_dir / 'secrets.json'
-    try:
-        with open(path, encoding='utf-8') as f:
-            secrets: dict = json.load(f)
-        return secrets.get(key, '')
-    except (OSError, json.JSONDecodeError):
-        return ''
 
 
 def main() -> None:
