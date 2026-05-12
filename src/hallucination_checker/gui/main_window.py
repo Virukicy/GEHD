@@ -58,6 +58,22 @@ from hallucination_checker.io.document_text import DocumentText
 # 配置目录（与引擎组共享，不私存）
 _CONFIG_DIR = get_config_dir()
 
+# ---- 多格式支持 ----
+_SUPPORTED_EXTENSIONS: frozenset[str] = frozenset({
+    '.docx', '.txt', '.md', '.html', '.htm', '.jsonl', '.csv', '.pdf', '.pptx',
+})
+_FACTORY_MAP: dict[str, Any] = {
+    '.docx': DocumentText.from_docx,
+    '.txt':  DocumentText.from_text,
+    '.md':   DocumentText.from_markdown,
+    '.html': DocumentText.from_html,
+    '.htm':  DocumentText.from_html,
+    '.jsonl': DocumentText.from_jsonl,
+    '.csv':  DocumentText.from_csv,
+    '.pdf':  DocumentText.from_pdf,
+    '.pptx': DocumentText.from_pptx,
+}
+
 # ---- 颜色常量 ----
 _COLOR_ISSUE_BG = QColor('#FFE0E0')
 _COLOR_ISSUE_FG = QColor('#B71C1C')
@@ -132,13 +148,13 @@ class DropLineEdit(QLineEdit):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setAcceptDrops(True)
-        self.setPlaceholderText('选择 .docx 文件，或拖拽到此处，或手动输入路径')
+        self.setPlaceholderText('选择文件，或拖拽到此处，或手动输入路径 (.docx/.pdf/.txt/.md/.html/.jsonl/.csv/.pptx)')
 
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:  # noqa: N802
         mime: QMimeData | None = event.mimeData()
         if mime and mime.hasUrls():
             for url in mime.urls():
-                if url.isLocalFile() and url.toLocalFile().lower().endswith('.docx'):
+                if url.isLocalFile() and url.toLocalFile().lower().endswith(tuple(_SUPPORTED_EXTENSIONS)):
                     event.acceptProposedAction()
                     return
         event.ignore()
@@ -147,7 +163,7 @@ class DropLineEdit(QLineEdit):
         mime = event.mimeData()
         if mime and mime.hasUrls():
             for url in mime.urls():
-                if url.isLocalFile() and url.toLocalFile().lower().endswith('.docx'):
+                if url.isLocalFile() and url.toLocalFile().lower().endswith(tuple(_SUPPORTED_EXTENSIONS)):
                     self.setText(url.toLocalFile())
                     event.acceptProposedAction()
                     return
@@ -452,7 +468,9 @@ class MainWindow(QMainWindow):
 
     def _browse_file(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
-            self, '选择 Word 文档', '', 'Word 文档 (*.docx);;所有文件 (*)'
+            self, '选择文档',
+            '',
+            '文档文件 (*.docx *.pdf *.pptx *.txt *.md *.html *.jsonl *.csv);;所有文件 (*)',
         )
         if path:
             self._file_input.setText(path)
@@ -462,21 +480,29 @@ class MainWindow(QMainWindow):
     def _scan(self) -> None:
         filepath = self._file_input.text().strip()
         if not filepath:
-            QMessageBox.warning(self, '缺少文件', '请先选择或输入一个 .docx 文件路径。')
+            QMessageBox.warning(self, '缺少文件', '请先选择或输入一个文档文件路径。')
             return
         path = Path(filepath)
         if not path.exists():
             QMessageBox.warning(self, '文件不存在', f'找不到文件：\n{filepath}')
             return
-        if path.suffix.lower() != '.docx':
-            QMessageBox.warning(self, '格式不支持', '当前仅支持 .docx 格式。')
+
+        ext = path.suffix.lower()
+        factory = _FACTORY_MAP.get(ext)
+        if factory is None:
+            QMessageBox.warning(
+                self, '格式不支持',
+                f'不支持的格式（{ext}）。\n'
+                f'支持：.docx .pdf .pptx .txt .md .html .jsonl .csv'
+            )
             return
+
         output_l4 = self._verify_checkbox.isChecked()
         cross_validate = self._cross_validate_checkbox.isChecked()
 
         try:
             config = load_config()
-            text = DocumentText.from_docx(path)
+            text = factory(path)
         except (FileNotFoundError, ValueError, OSError, json.JSONDecodeError) as e:
             QMessageBox.critical(self, '加载失败', f'无法加载文档：\n{e}')
             return
