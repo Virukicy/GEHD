@@ -292,6 +292,7 @@ class MainWindow(QMainWindow):
         self._setup_ui()
         self._setup_legend()
         self._setup_statusbar()
+        self._refresh_widget_theme()
 
     # ---- 主题 ----
 
@@ -304,8 +305,59 @@ class MainWindow(QMainWindow):
         self.theme = theme
         self._apply_theme()
         _save_theme_name(theme.dir_name())
+        self._refresh_widget_theme()
         self._rebuild_legend()
         self._refresh_document_view()
+
+    def _refresh_widget_theme(self) -> None:
+        """将主题令牌应用到所有硬编码样式的控件。"""
+        card = self.theme.color('surface.card')
+        border = self.theme.color('surface.border')
+        text_primary = self.theme.color('text.primary')
+        text_secondary = self.theme.color('text.secondary')
+        verified_fg = self.theme.color('severity.verified.fg')
+        issue_fg = self.theme.color('severity.issue.fg')
+        consensus_fg = self.theme.color('severity.consensus_strong.fg')
+        link_color = self.theme.color('text.link')
+
+        # 统计条背景
+        self._stats_frame.setStyleSheet(
+            f'QFrame {{ background-color: {card.name()}; border: 1px solid {border.name()}; '
+            'border-radius: 4px; padding: 6px 10px; }'
+        )
+
+        # 统计条内标签
+        for key_label in self._stat_labels.values():
+            key_label.setStyleSheet(
+                f'border: none; background: transparent; color: {text_primary.name()};'
+            )
+
+        # 验证/共识/核查 标签
+        if self._verified_real_label:
+            self._verified_real_label.setStyleSheet(
+                f'border: none; background: transparent; color: {verified_fg.name()}; font-weight: bold;'
+            )
+        if self._verified_fake_label:
+            self._verified_fake_label.setStyleSheet(
+                f'border: none; background: transparent; color: {issue_fg.name()}; font-weight: bold;'
+            )
+        if self._consensus_label:
+            self._consensus_label.setStyleSheet(
+                f'border: none; background: transparent; color: {consensus_fg.name()}; font-weight: bold;'
+            )
+        if self._auto_verify_status:
+            self._auto_verify_status.setStyleSheet(
+                f'border: none; background: transparent; color: {link_color.name()};'
+            )
+
+        # 操作栏标签
+        self._l4_action_label.setStyleSheet(f'color: {text_secondary.name()};')
+
+        # 图例条文字
+        for _swatch, label_widget in self._legend_items:
+            label_widget.setStyleSheet(
+                f'border: none; background: transparent; font-size: 11px; color: {text_secondary.name()};'
+            )
 
     # ---- 菜单栏 ----
 
@@ -362,10 +414,7 @@ class MainWindow(QMainWindow):
         # 统计条
         self._stats_frame = QFrame()
         self._stats_frame.setFrameShape(QFrame.Shape.StyledPanel)
-        self._stats_frame.setStyleSheet(
-            'QFrame { background-color: #F5F5F5; border: 1px solid #DDD; '
-            'border-radius: 4px; padding: 6px 10px; }'
-        )
+
         stats_layout = QHBoxLayout(self._stats_frame)
         stats_layout.setContentsMargins(12, 4, 12, 4)
         stats_layout.setSpacing(20)
@@ -374,36 +423,29 @@ class MainWindow(QMainWindow):
         for key in ['total_candidates', 'l25_candidates', 'high_risk',
                      'medium_risk', 'low_risk', 'l4_queue_size']:
             lbl = QLabel('—')
-            lbl.setStyleSheet('border: none; background: transparent;')
             stats_layout.addWidget(lbl)
             self._stat_labels[key] = lbl
 
         self._verified_real_label = QLabel('')
-        self._verified_real_label.setStyleSheet(
-            'border: none; background: transparent; color: #2E7D32; font-weight: bold;'
-        )
         stats_layout.addWidget(self._verified_real_label)
 
         self._verified_fake_label = QLabel('')
-        self._verified_fake_label.setStyleSheet(
-            'border: none; background: transparent; color: #C62828; font-weight: bold;'
-        )
         stats_layout.addWidget(self._verified_fake_label)
 
         self._consensus_label = QLabel('')
-        self._consensus_label.setStyleSheet(
-            'border: none; background: transparent; color: #1B5E20; font-weight: bold;'
-        )
         stats_layout.addWidget(self._consensus_label)
 
         self._auto_verify_status = QLabel('')
-        self._auto_verify_status.setStyleSheet(
-            'border: none; background: transparent; color: #1565C0;'
-        )
         stats_layout.addWidget(self._auto_verify_status)
 
         stats_layout.addStretch()
         layout.addWidget(self._stats_frame)
+
+        # 存储需要主题刷新的 stats 标签引用
+        self._stats_themed_widgets: list[tuple[QFrame, QLabel, QLabel, QLabel, QLabel]] = [
+            (self._stats_frame, self._verified_real_label, self._verified_fake_label,
+             self._consensus_label, self._auto_verify_status),
+        ]
 
         # 结果标签页
         self._result_tabs = QTabWidget()
@@ -445,7 +487,7 @@ class MainWindow(QMainWindow):
         self._l4_action_btn.setEnabled(False)
         self._l4_action_btn.clicked.connect(self._on_execute_recommendation)
         self._l4_action_label = QLabel('')
-        self._l4_action_label.setStyleSheet('color: #757575;')
+        self._l4_action_label.setObjectName('l4_action_label')
         l4_action_layout.addWidget(self._l4_action_btn)
         l4_action_layout.addWidget(self._l4_action_label)
         l4_action_layout.addStretch()
@@ -490,7 +532,7 @@ class MainWindow(QMainWindow):
                 'border-radius: 2px; border: 1px solid #CCC;'
             )
             text = QLabel(label)
-            text.setStyleSheet('border: none; background: transparent; font-size: 11px; color: #555;')
+            text.setObjectName('legend_label')
             legend_layout.addWidget(swatch)
             legend_layout.addWidget(text)
             self._legend_items.append((swatch, text))
@@ -830,10 +872,14 @@ class MainWindow(QMainWindow):
     def _refresh_document_view(self) -> None:
         text = self._current_text
         if text is None:
-            self._doc_view.setHtml('<p style="color:#999;">请先扫描文档。</p>')
+            self._doc_view.setHtml(
+                f'<p style="color:{self.theme.color("text.secondary").name()};">请先扫描文档。</p>'
+            )
             return
 
         highlights: dict[str, list[tuple[str, str]]] = {}
+        secondary = self.theme.color('text.secondary').name()
+        card = self.theme.color('surface.card').name()
 
         for issue in self._current_issues:
             loc, word = self._parse_location_word(issue)
@@ -876,10 +922,10 @@ class MainWindow(QMainWindow):
                             1
                         )
 
-            loc_tag = f' <small style="color:#999;">[{display_label}]</small>'
+            loc_tag = f' <small style="color:{secondary};">[{display_label}]</small>'
             parts_html.append(f'<p><span class="loc-label">{loc_tag}</span>{part_text}</p>')
 
-        body = '\n'.join(parts_html) if parts_html else '<p style="color:#999;">无内容</p>'
+        body = '\n'.join(parts_html) if parts_html else f'<p style="color:{secondary};">无内容</p>'
 
         # 用主题令牌颜色生成 CSS
         css_parts: list[str] = []
@@ -896,11 +942,11 @@ class MainWindow(QMainWindow):
         html = f'''<!DOCTYPE html>
 <html><head><meta charset="utf-8">
 <style>
-  body {{ font-family: -apple-system, sans-serif; font-size: 14px; line-height: 1.8; margin: 24px; }}
-  .loc-label {{ color: #aaa; font-size: 12px; margin-right: 8px; }}
+  body {{ font-family: -apple-system, sans-serif; font-size: 14px; line-height: 1.8; margin: 24px; color: {self.theme.color("text.primary").name()}; background: {self.theme.color("surface.background").name()}; }}
+  .loc-label {{ color: {secondary}; font-size: 12px; margin-right: 8px; }}
   .hl-real {{ text-decoration: line-through; }}
 {chr(10).join(css_parts)}
-  .stats-bar {{ margin-bottom: 16px; padding: 8px 12px; background: #F5F5F5; border-radius: 4px; font-size: 13px; }}
+  .stats-bar {{ margin-bottom: 16px; padding: 8px 12px; background: {card}; border-radius: 4px; font-size: 13px; }}
 </style></head><body>
 <div class="stats-bar">
   问题: {len(self._current_issues)} | 警告: {len(self._current_warnings)} | 候选: {len(self._current_l4_queue)} | 段落: {len(text.parts)}
