@@ -51,7 +51,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from hallucination_checker.engine.checker import gehd_check
 from hallucination_checker.engine.config import GEHD_VERSION, load_config
 from hallucination_checker.engine.cross_validate import gehd_cross_validate
 from hallucination_checker.gui.settings_dialog import get_config_dir
@@ -643,7 +642,6 @@ class MainWindow(QMainWindow):
         """根据 PipelineContext.status 刷新管道状态栏。"""
         ctx = self._current_context
         if ctx:
-            status = ctx.get('status', {})
             dl = ctx.get('decision_log', [])
             # 从 decision_log 中提取实际执行的阶段
             stages_done: list[str] = []
