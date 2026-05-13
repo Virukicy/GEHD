@@ -466,20 +466,17 @@ class SettingsDialog(QDialog):
 
     def _load_pipeline(self) -> None:
         data = _read_json_obj(_CONFIG_DIR / 'pipeline.json')
+        mode = data.get('mode', 'full')
+        idx = self._pipe_mode.findText(mode)
+        if idx >= 0:
+            self._pipe_mode.setCurrentIndex(idx)
         steps = data.get('steps', {})
-        self._pipe_cross_validate.setChecked(steps.get('cross_validate', False))
-        self._pipe_web_verify.setChecked(steps.get('web_verify', False))
-        self._pipe_llm_pre.setChecked(steps.get('llm_pre', False))
-        self._pipe_llm_post.setChecked(steps.get('llm_post', False))
         self._pipe_output_queue.setChecked(steps.get('output_verify_queue', False))
 
     def _save_pipeline(self) -> None:
         data = _read_json_obj(_CONFIG_DIR / 'pipeline.json')
+        data['mode'] = self._pipe_mode.currentText()
         steps = data.setdefault('steps', {})
-        steps['cross_validate'] = self._pipe_cross_validate.isChecked()
-        steps['web_verify'] = self._pipe_web_verify.isChecked()
-        steps['llm_pre'] = self._pipe_llm_pre.isChecked()
-        steps['llm_post'] = self._pipe_llm_post.isChecked()
         steps['output_verify_queue'] = self._pipe_output_queue.isChecked()
         _write_json_obj(_CONFIG_DIR / 'pipeline.json', data)
 
@@ -503,9 +500,8 @@ class SettingsDialog(QDialog):
         # LLM 模型列表
         llm_data = _read_json_obj(_CONFIG_DIR / 'llm.json')
         models = [llm_data.get('model', '')]
-        for combo in (self._pipe_llm_pre_model, self._pipe_llm_post_model):
-            combo.clear()
-            combo.addItems(models)
+        self._pipe_llm_model.clear()
+        self._pipe_llm_model.addItems(models)
 
     def _save_search(self) -> None:
         data = _read_json_obj(_CONFIG_DIR / 'search.json')

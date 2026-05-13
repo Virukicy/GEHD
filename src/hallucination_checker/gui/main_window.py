@@ -241,6 +241,55 @@ class EvidenceDialog(QDialog):
         layout.addWidget(close_btn)
 
 
+# ---- 决策追溯弹窗 ----
+
+class DecisionTraceDialog(QDialog):
+    """从 PipelineContext.decision_log 渲染决策链。"""
+
+    def __init__(self, decision_log: list[dict[str, Any]], parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle('决策追溯链')
+        self.setMinimumSize(560, 420)
+        self.resize(600, 480)
+
+        layout = QVBoxLayout(self)
+        browser = QTextBrowser()
+        browser.setOpenExternalLinks(False)
+
+        if not decision_log:
+            browser.setHtml('<p style="color:#999;">无决策记录。</p>')
+        else:
+            rows: list[str] = ['<h2>决策追溯链</h2>', '<hr>']
+            for i, entry in enumerate(decision_log):
+                stage = entry.get('stage', f'阶段{i+1}')
+                status = entry.get('status', '?')
+                reason = entry.get('reason', '')
+                ts = entry.get('timestamp', '')[:19]
+                result = entry.get('result', {})
+
+                status_icon = {'completed': '✅', 'skipped': '⏭️', 'warning': '⚠️', 'error': '❌'}.get(status, '❓')
+                rows.append(
+                    f'<h3>{status_icon} [{stage}] {status}</h3>'
+                )
+                if reason:
+                    rows.append(f'<p><b>原因:</b> {_html.escape(reason)}</p>')
+                if result and status == 'completed':
+                    rows.append('<p><b>结果:</b></p><ul>')
+                    for k, v in result.items():
+                        rows.append(f'<li>{_html.escape(str(k))}: {_html.escape(str(v))}</li>')
+                    rows.append('</ul>')
+                if ts and ts > '0001':
+                    rows.append(f'<p style="color:#999;font-size:12px;">{ts}</p>')
+                if i < len(decision_log) - 1:
+                    rows.append('<hr>')
+            browser.setHtml('\n'.join(rows))
+
+        layout.addWidget(browser)
+        close_btn = QPushButton('关闭')
+        close_btn.clicked.connect(self.accept)
+        layout.addWidget(close_btn)
+
+
 # ---- 后台扫描线程 ----
 
 class ScanWorker(QThread):
@@ -274,18 +323,25 @@ class ScanWorker(QThread):
                 issues, warnings, stats, l4_queue = gehd_cross_validate(
                     self._text, output_verify_queue=self._output_l4
                 )
+                context: dict[str, Any] = {}
             else:
-                if self._config and getattr(self._config, 'l4_auto_verify', False):
-                    self.progress.emit('扫描中，正在联网核查...')
-                else:
-                    self.progress.emit('扫描中...')
-                issues, warnings, stats, l4_queue = gehd_check(
-                    self._text, self._config, output_verify_queue=self._output_l4,
+                from hallucination_checker.engine.pipeline import run_pipeline
+                self.progress.emit('规则引擎...')
+                ctx = run_pipeline(
+                    self._text, self._config,
                     llm=self._create_llm(),
+                    output_verify_queue=self._output_l4,
+                    progress_callback=lambda stage: self.progress.emit(f'{stage}...'),
                 )
+                issues = ctx['issues']
+                warnings = ctx['warnings']
+                stats = ctx['stats']
+                l4_queue = ctx['l4_queue']
+                context = dict(ctx)
             self.finished.emit({
                 'issues': issues, 'warnings': warnings,
                 'stats': stats, 'l4_queue': l4_queue, 'config': self._config,
+                'context': context,
             })
         except Exception as e:
             self.error_msg.emit(str(e))
@@ -312,6 +368,7 @@ class MainWindow(QMainWindow):
         self._current_l4_queue: list[dict[str, Any]] = []
         self._current_config: Any = None
         self._current_text: Any = None
+        self._current_context: dict[str, Any] | None = None
         self._settings_dialog: Any = None
         self._verified_real_label: QLabel | None = None
         self._verified_fake_label: QLabel | None = None
@@ -583,32 +640,38 @@ class MainWindow(QMainWindow):
             layout.addWidget(self._pipeline_bar)
 
     def _refresh_pipeline_status(self) -> None:
-        """根据 pipeline.json 刷新管道状态栏。"""
+        """根据 PipelineContext.status 刷新管道状态栏。"""
+        ctx = self._current_context
+        if ctx:
+            status = ctx.get('status', {})
+            dl = ctx.get('decision_log', [])
+            # 从 decision_log 中提取实际执行的阶段
+            stages_done: list[str] = []
+            for entry in dl:
+                stage = entry.get('stage', '')
+                if stage and entry.get('status') == 'completed' and stage not in stages_done:
+                    stages_done.append(stage)
+            if stages_done:
+                stage_labels = {
+                    'rules': '规则', 'llm_pre': 'LLM前置', 'web_verify': '联网核查',
+                    'llm_post': 'LLM后置', 'llm_direct': 'LLM直验',
+                    'cross_validate': '交叉校验', 'output_queue': '验证队列',
+                }
+                parts = ['管道:'] + [stage_labels.get(s, s) for s in stages_done]
+                self._pipeline_bar.setText(' → '.join(parts))
+                return
+
+        # 无 context 时回退读 pipeline.json
         try:
             import json
             path = _CONFIG_DIR / 'pipeline.json'
             with open(path, encoding='utf-8') as f:
                 data = json.load(f)
-            steps = data.get('steps', {})
+            mode = data.get('mode', 'full')
+            mode_labels = {'full': '全链路', 'fast': '仅规则引擎', 'offline': '离线'}
+            self._pipeline_bar.setText(f'管道: {mode_labels.get(mode, mode)}')
         except (FileNotFoundError, json.JSONDecodeError):
-            steps = {}
-
-        parts: list[str] = ['管道: 规则']
-        if steps.get('cross_validate'):
-            parts.append('交叉校验')
-        if steps.get('llm_pre'):
-            parts.append('LLM前置')
-        if steps.get('web_verify'):
-            parts.append('联网核查')
-        if steps.get('llm_post'):
-            parts.append('LLM后置')
-        if steps.get('output_verify_queue'):
-            parts.append('验证队列')
-
-        if len(parts) == 1:
             self._pipeline_bar.setText('管道: 规则引擎（本地）')
-        else:
-            self._pipeline_bar.setText(' → '.join(parts))
 
     def _rebuild_legend(self) -> None:
         for i, (token_key, _label) in enumerate([
@@ -703,6 +766,7 @@ class MainWindow(QMainWindow):
         self._current_stats = stats
         self._current_l4_queue = l4_queue
         self._current_config = config
+        self._current_context = result.get('context')
 
         self._refresh_stats(stats)
         self._refresh_results(issues, warnings, l4_queue, config)
@@ -1060,6 +1124,15 @@ class MainWindow(QMainWindow):
         item: QListWidgetItem | None = None, *, row: int = -1,
     ) -> None:
         menu = QMenu(self)
+
+        # 查看决策链（v0.5.0 审计视图）
+        if self._current_context and self._current_context.get('decision_log'):
+            audit_action = QAction('查看决策链', self)
+            audit_action.triggered.connect(
+                lambda: DecisionTraceDialog(self._current_context.get('decision_log', []), self).exec()
+            )
+            menu.addAction(audit_action)
+            menu.addSeparator()
 
         real_enabled = True
         fake_enabled = True
