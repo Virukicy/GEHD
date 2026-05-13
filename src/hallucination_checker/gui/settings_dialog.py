@@ -275,19 +275,22 @@ class SettingsDialog(QDialog):
         scroll.setWidget(w)
         layout = QVBoxLayout(w)
 
-        # 管道步骤
-        steps_group = QGroupBox('管道步骤')
-        steps_layout = QVBoxLayout(steps_group)
+        # 验证模式
+        mode_group = QGroupBox('验证模式')
+        mode_form = QFormLayout(mode_group)
 
-        self._pipe_cross_validate = QCheckBox('多模型交叉校验（三路并行，开销 3x）')
-        steps_layout.addWidget(self._pipe_cross_validate)
+        self._pipe_mode = QComboBox()
+        self._pipe_mode.addItems(['full', 'fast', 'offline'])
+        self._pipe_mode.setToolTip('full=全链路 / fast=仅规则引擎 / offline=规则+LLM无联网')
+        mode_form.addRow('模式：', self._pipe_mode)
 
-        self._pipe_web_verify = QCheckBox('联网核查')
-        steps_layout.addWidget(self._pipe_web_verify)
+        self._pipe_output_queue = QCheckBox('生成验证队列')
+        mode_form.addRow('', self._pipe_output_queue)
+        layout.addWidget(mode_group)
 
-        # 联网核查子项
-        search_group = QGroupBox('联网核查设置')
-        search_form = QFormLayout(search_group)
+        # 联网核查子设置（full 模式展开）
+        self._search_group = QGroupBox('联网核查设置')
+        search_form = QFormLayout(self._search_group)
 
         self._pipe_search_provider = QComboBox()
         self._pipe_search_provider.addItems(['auto', 'tavily', 'duckduckgo'])
@@ -306,34 +309,29 @@ class SettingsDialog(QDialog):
         self._pipe_deep_search.setToolTip('≥此分的候选使用深度搜索')
         search_form.addRow('深度搜索阈值：', self._pipe_deep_search)
 
-        steps_layout.addWidget(search_group)
+        layout.addWidget(self._search_group)
 
-        self._pipe_llm_pre = QCheckBox('LLM 前置筛查')
-        steps_layout.addWidget(self._pipe_llm_pre)
+        # LLM 设置（非 fast 模式可见）
+        self._llm_group = QGroupBox('LLM 设置')
+        llm_form = QFormLayout(self._llm_group)
 
-        llm_pre_group = QGroupBox('前置 LLM 设置')
-        llm_pre_form = QFormLayout(llm_pre_group)
-        self._pipe_llm_pre_model = QComboBox()
-        self._pipe_llm_pre_model.setEditable(True)
-        llm_pre_form.addRow('模型：', self._pipe_llm_pre_model)
-        steps_layout.addWidget(llm_pre_group)
+        self._pipe_llm_model = QComboBox()
+        self._pipe_llm_model.setEditable(True)
+        llm_form.addRow('模型：', self._pipe_llm_model)
 
-        self._pipe_llm_post = QCheckBox('LLM 后置判断')
-        steps_layout.addWidget(self._pipe_llm_post)
+        layout.addWidget(self._llm_group)
 
-        llm_post_group = QGroupBox('后置 LLM 设置')
-        llm_post_form = QFormLayout(llm_post_group)
-        self._pipe_llm_post_model = QComboBox()
-        self._pipe_llm_post_model.setEditable(True)
-        llm_post_form.addRow('模型：', self._pipe_llm_post_model)
-        steps_layout.addWidget(llm_post_group)
+        # 模式联动
+        self._pipe_mode.currentIndexChanged.connect(self._on_pipe_mode_changed)
+        self._on_pipe_mode_changed()
 
-        self._pipe_output_queue = QCheckBox('生成验证队列')
-        steps_layout.addWidget(self._pipe_output_queue)
-
-        layout.addWidget(steps_group)
         layout.addStretch()
         return scroll
+
+    def _on_pipe_mode_changed(self) -> None:
+        mode = self._pipe_mode.currentText()
+        self._search_group.setVisible(mode != 'fast')
+        self._llm_group.setVisible(mode != 'fast')
 
     # --- 主题 Tab ---
 

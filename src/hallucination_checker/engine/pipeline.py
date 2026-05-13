@@ -119,6 +119,9 @@ def run_pipeline(
     if output_verify_queue and 'output_queue' in stages:
         _write_l4_queue(context)
 
+    # 7. 审计信息注入 stats
+    context.setdefault('stats', {})['_decision_log'] = context.get('decision_log', [])
+
     return context
 
 
@@ -231,6 +234,7 @@ def _validate_and_run_stage(
     context = _dispatch_stage(stage_name, context, llm, config)
 
     # 验证 produces
+    produces_ok = True
     for field in contract['produces']:
         if field not in context:
             context.setdefault('decision_log', []).append({
@@ -239,8 +243,40 @@ def _validate_and_run_stage(
                 'reason': f'expected output field "{field}" not produced',
                 'timestamp': datetime.datetime.now().isoformat(),
             })
+            produces_ok = False
+
+    # 记录 completed trace
+    if produces_ok:
+        trace = {'stage': stage_name, 'status': 'completed', 'timestamp': datetime.datetime.now().isoformat()}
+        result = _stage_result(stage_name, context)
+        if result:
+            trace['result'] = result
+        context.setdefault('decision_log', []).append(trace)
 
     return context
+
+
+def _stage_result(stage_name: str, context: PipelineContext) -> dict | None:
+    """提取阶段完成时的 result 摘要。"""
+    dl = context.get('decision_log', [])
+    if not dl:
+        return None
+
+    if stage_name == 'web_verify':
+        stats = context.get('stats', {})
+        l4_queue = context.get('l4_queue', [])
+        return {
+            'verified_real': stats.get('l4_verified_real', 0),
+            'verified_fake': stats.get('l4_verified_fake', 0),
+            'queue_size': len(l4_queue),
+        }
+
+    # 其他阶段的 result 取自它们写入的 decision_log 最后一条
+    last = dl[-1]
+    if last.get('step') == stage_name or last.get('stage') == stage_name:
+        return {k: v for k, v in last.items() if k not in ('step', 'stage', 'status', 'timestamp', 'reason')}
+
+    return None
 
 
 # ---- 阶段分发 ----

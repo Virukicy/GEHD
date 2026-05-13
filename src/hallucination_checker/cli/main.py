@@ -29,13 +29,15 @@ logger = get_logger(__name__)
 
 
 def check_docx(
-    filepath: str, do_verify: bool = False, config: GEHDConfig | None = None
+    filepath: str, do_verify: bool = False, config: GEHDConfig | None = None,
+    do_audit: bool = False,
 ) -> tuple[bool, list[dict] | None]:
     """对单个 docx 文件执行全部检查。
 
     Args:
         filepath: docx 文件路径
         do_verify: 是否输出 L4 核查队列
+        do_audit: 是否输出完整决策日志
         config: GEHDConfig 配置（None 则自动加载）
 
     Returns:
@@ -82,6 +84,9 @@ def check_docx(
         cached_count, _ = load_cache(filepath)
         print_l4_summary(l4_queue, queue_file, cached_count, config)
 
+    if do_audit:
+        print_audit_log(gehd_stats)
+
     print_report_footer()
 
     ok = len(all_issues) == 0
@@ -95,19 +100,31 @@ def check_docx(
     return ok, l4_queue if do_verify else None
 
 
+def print_audit_log(stats: dict) -> None:
+    """输出完整决策日志为格式化 JSON。"""
+    import json
+
+    decision_log = stats.get('_decision_log', [])
+    print('\n===== AUDIT LOG =====')
+    print(json.dumps(decision_log, ensure_ascii=False, indent=2))
+    print('===== END AUDIT LOG =====\n')
+
+
 def main() -> None:
     """CLI 主入口。"""
     if len(sys.argv) < 2:
         print('用法:')
         print('  python -m hallucination_checker <docx文件路径>')
-        print('  python -m hallucination_checker <docx文件路径> --verify  # 输出L4核查队列')
+        print('  python -m hallucination_checker <docx文件路径> --verify   # 输出L4核查队列')
+        print('  python -m hallucination_checker <docx文件路径> --audit    # 输出完整决策日志')
         sys.exit(1)
 
     do_verify = '--verify' in sys.argv
+    do_audit = '--audit' in sys.argv
     target = [a for a in sys.argv[1:] if not a.startswith('--')][0]
 
     config = load_config()
-    result = check_docx(target, do_verify=do_verify, config=config)
+    result = check_docx(target, do_verify=do_verify, config=config, do_audit=do_audit)
     ok = result[0] if isinstance(result, tuple) else result
     sys.exit(0 if ok else 1)
 
