@@ -1,6 +1,6 @@
 # GEHD 架构文档
 
-> **版本**：v0.5.0-alpha  
+> **版本**：v0.5.0-beta  
 > **最后更新**：2026-05-13  
 > **目标读者**：AI 助手（Gemini/Claude/GPT/DeepSeek）或真人开发者  
 > **阅读顺序**：本文 → [development.md](./development.md) → [ai-guide.md](./ai-guide.md)（AI 用户）→ 代码
@@ -251,7 +251,31 @@ config/*.json（外部化）  >  engine/config.py（内置默认值）
 
 ---
 
+## 六点半、审计链路（v0.5.0-beta）
+
+### decision_log
+
+管道每个阶段执行后写入结构化决策日志，包含：
+- 阶段名称、输入候选数、输出候选数
+- 决策类型（passed/skipped/filtered/verified）
+- 跳过原因（candidates 为空、前置阶段中断）
+
+### CLI --audit 模式
+
+`python -m hallucination_checker file.docx --audit` 输出完整 decision_log JSON，每条含时间戳和阶段元数据。
+
+### GUI 审计视图
+
+管道状态栏升级为审计视图：
+- 六阶段步骤列表（含 decision_log 摘要）
+- 颜色编码（绿=通过、灰=跳过、红=异常）
+- 点击展开日志详情
+
+---
+
 ## 七、版本历史
+
+| **v0.5.0-beta** | 2026-05-13 | 审计链路：decision_log + --audit + 审计视图 |
 
 | 版本 | 日期 | 关键变更 |
 |------|------|------|
