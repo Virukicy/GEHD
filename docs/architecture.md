@@ -1,6 +1,6 @@
 # GEHD 架构文档
 
-> **版本**：v0.5.1  
+> **版本**：v0.5.2  
 > **最后更新**：2026-05-13  
 > **目标读者**：AI 助手（Gemini/Claude/GPT/DeepSeek）或真人开发者  
 > **阅读顺序**：本文 → [development.md](./development.md) → [ai-guide.md](./ai-guide.md)（AI 用户）→ 代码
@@ -64,7 +64,7 @@ GEHD项目/
 │   ├── cli/                    # === 命令行入口（薄层） ===
 │   │   └── main.py             # 参数解析 + 流程编排
 │   │
-│   └── gui/                    # GUI 层（PySide6 桌面应用：全文高亮、三套主题、管道状态栏、QThread 异步扫描）
+│   └── gui/                    # GUI 层（PySide6 桌面应用：全文高亮、三套主题、管道状态栏、QThread 异步扫描，配置统一由设置对话框管理）
 │
 ├── config/                     # === 外部化配置（JSON） ===
 │   ├── whitelist.json          # L1 白名单（可编辑，引擎自动加载）
@@ -286,7 +286,22 @@ JSON 归档含：时间戳、输入文件、管道模式、各阶段决策摘要
 
 ---
 
+## 六点九、用户数据目录（v0.5.2）
+
+### E 接口
+
+- `get_user_data_dir()` — 返回跨平台用户数据目录（macOS `~/Library/Application Support/GEHD/`，Windows `%APPDATA%/GEHD/`，Linux `~/.local/share/GEHD/`）
+- `save_user_config(key, value)` — 保存用户偏好到 `user_config.json`
+
+### GUI Key 管理
+
+设置对话框「API 密钥」选项卡统一管理 tavily_api_key 和 llm_api_key，写入用户数据目录下的 `secrets.json`，替代项目根目录手改。
+
+---
+
 ## 七、版本历史
+
+| **v0.5.2** | 2026-05-16 | 用户数据目录：get_user_data_dir + GUI Key 管理 |
 
 | **v0.5.1** | 2026-05-16 | 日志系统：logger.py + gehd.log + workspace/scans/ JSON 归档 |
 
