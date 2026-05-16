@@ -72,7 +72,8 @@ def create_llm_adapter_from_config() -> OpenAIAdapter | None:
     # 管道开关
     pipeline_cfg = _load_json(cfg_dir / 'pipeline.json')
     steps = pipeline_cfg.get('steps', {})
-    if not (steps.get('llm_pre') or steps.get('llm_post')):
+    llm_stages = {'llm_pre', 'llm_post', 'llm_direct_verify'}
+    if not any(steps.get(s) for s in llm_stages):
         return None
 
     # LLM 配置
