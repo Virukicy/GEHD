@@ -76,7 +76,7 @@ def check_docx(
     all_issues.extend(check_emoji(doc))
     all_warnings.extend(check_long_text(doc, config))
 
-    # GEHD 幻觉核查（v0.4.0-rc 管道路由）
+    # GEHD 幻觉核查（v0.5.1 管道路由）
     from ..engine.llm.adapter import create_llm_adapter_from_config
     llm = create_llm_adapter_from_config()
     gehd_issues, gehd_warnings, gehd_stats, l4_queue = gehd_check(
@@ -89,6 +89,25 @@ def check_docx(
     print_report_header(filepath, doc)
     print_issues_and_warnings(all_issues, all_warnings)
     print_gehd_stats(gehd_stats)
+
+    # LLM 活动摘要
+    dl = gehd_stats.get('_decision_log', [])
+    llm_stages = [
+        e for e in dl
+        if e.get('status') == 'completed'
+        and e.get('stage') in ('llm_pre', 'llm_post', 'llm_direct_verify')
+    ]
+    for s in llm_stages:
+        result = s.get('result', {})
+        extra = ''
+        if s['stage'] == 'llm_pre':
+            extra = f" 过滤 {result.get('input_count', '?')}→{result.get('filtered_count', '?')}"
+        elif s['stage'] == 'llm_direct_verify':
+            verdicts = result.get('verdicts', [])
+            n_fab = sum(1 for v in verdicts if v.get('verdict') == 'fabricated')
+            n_con = sum(1 for v in verdicts if v.get('verdict') == 'consistent')
+            extra = f" 直验 {len(verdicts)} 实体 (fab={n_fab} con={n_con})"
+        print(f'  [LLM] {s["stage"]}{extra}')
 
     if do_verify:
         queue_file = export_queue(filepath, l4_queue, config)
