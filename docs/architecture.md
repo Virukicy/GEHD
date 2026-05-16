@@ -1,6 +1,6 @@
 # GEHD 架构文档
 
-> **版本**：v0.5.0-beta  
+> **版本**：v0.5.1  
 > **最后更新**：2026-05-13  
 > **目标读者**：AI 助手（Gemini/Claude/GPT/DeepSeek）或真人开发者  
 > **阅读顺序**：本文 → [development.md](./development.md) → [ai-guide.md](./ai-guide.md)（AI 用户）→ 代码
@@ -36,6 +36,7 @@ GEHD项目/
 │   │   ├── checker.py          # 主编排器：组合 L1→L4 全流程
 │   │   ├── pipeline.py         # 管道编排器（注册表驱动三路径 full/fast/offline，含 PipelineContext.status + STAGE_CONTRACTS + ADAPTER_CONTRACTS）
 │   │   ├── direct_verify.py    # LLM 直接核验（fast 路径，零搜索开销）
+│   │   ├── logger.py           # 扫描日志系统（gehd.log + workspace/scans/ JSON 归档）
 │   │   │   └── text_extractor.py  # 从 docx 提取结构化文本块
 │   │   ├── layers/             # === 六层规则引擎 ===
 │   │   │   ├── l1_whitelist.py     # L1: 白名单放行
@@ -273,7 +274,21 @@ config/*.json（外部化）  >  engine/config.py（内置默认值）
 
 ---
 
+## 六点七八、日志系统（v0.5.1）
+
+### engine/logger.py
+
+统一日志模块，两路输出：
+- **gehd.log**：运行日志（INFO/WARNING/ERROR），文本格式，滚动追加
+- **workspace/scans/**：扫描结果 JSON 归档（`scan_YYYYMMDD_HHMMSS.json`），每次扫描一条
+
+JSON 归档含：时间戳、输入文件、管道模式、各阶段决策摘要、issues/warnings 数量。
+
+---
+
 ## 七、版本历史
+
+| **v0.5.1** | 2026-05-16 | 日志系统：logger.py + gehd.log + workspace/scans/ JSON 归档 |
 
 | **v0.5.0-beta** | 2026-05-13 | 审计链路：decision_log + --audit + 审计视图 |
 
