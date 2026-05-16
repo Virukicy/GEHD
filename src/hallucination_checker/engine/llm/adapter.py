@@ -72,8 +72,13 @@ def create_llm_adapter_from_config() -> OpenAIAdapter | None:
     # 管道开关
     pipeline_cfg = _load_json(cfg_dir / 'pipeline.json')
     steps = pipeline_cfg.get('steps', {})
-    llm_stages = {'llm_pre', 'llm_post', 'llm_direct_verify'}
-    if not any(steps.get(s) for s in llm_stages):
+    mode = pipeline_cfg.get('mode', 'full')
+    llm_stage_names = {'llm_pre', 'llm_post', 'llm_direct_verify'}
+    # v0.5.1: 根据 mode 的 STAGES 注册表判断，而非检查 steps 键
+    # （llm_direct_verify 不在 steps 中，仅在 STAGES 注册表）
+    from ..pipeline import STAGES
+    stages_for_mode = set(STAGES.get(mode, []))
+    if not (llm_stage_names & stages_for_mode):
         return None
 
     # LLM 配置
