@@ -7,6 +7,7 @@ import sys
 from ..engine.checker import gehd_check
 from ..engine.config import GEHDConfig, load_config
 from ..engine.layers.l4_verify import export_queue, load_cache
+from ..engine.logger import setup_gehd_logger
 from ..io.document_text import DocumentText
 from ..io.docx_reader import load_docx
 from ..io.format_checks import (
@@ -24,7 +25,6 @@ from ..io.reporter import (
     print_report_header,
 )
 from ..logging_setup import get_logger
-from ..engine.logger import setup_gehd_logger
 
 logger = get_logger(__name__)
 _cli_logger = setup_gehd_logger('gehd.cli')
