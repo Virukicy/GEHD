@@ -11,8 +11,6 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from hallucination_checker.engine.config import get_user_data_dir, save_user_config
-
 from PySide6.QtCore import Qt  # noqa: E402
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -33,6 +31,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+from hallucination_checker.engine.config import get_user_data_dir, save_user_config
 
 
 def get_config_dir() -> Path:
