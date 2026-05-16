@@ -459,6 +459,81 @@ SEARCH_PROVIDERS = {'tavily': TavilyBackend, 'duckduckgo': DuckDuckGoBackend}
 
 **改动量**：`l4_web_verify.py` -60 行 + `engine/search/` +60 行 + `adapter.py` 改 5 行。
 
+### 8.6 QA 哨卡升级 — 从「代码不崩」到「功能不残」
+
+#### 8.6.1 v0.5.0 暴露的问题
+
+v0.5.0 闭环后 PM 持续发现功能级 bug：fast 模式 LLM 未激活、GUI 三模式 visible 错配、决策链被锁死在 full 模式。这些 bug 全部通过了 pytest/mypy/ruff 哨卡。
+
+**根因**：当前 QA 哨卡只能保证「代码不崩」，不能保证「功能完整」。
+
+| 当前检查 | 漏了什么 | v0.5.0 哪个 bug 穿过 |
+|------|------|------|
+| pytest 通过 | 无端到端用例 → fast 模式空跑看不出来 | fast 工厂漏 llm_direct_verify |
+| mypy 零错误 | 不检测逻辑错误 → tooltip 写反了类型系统帮不了 | GUI 模式 visible 错配 |
+| ruff 零错误 | 不检测功能完整性 | 决策链 locked to full |
+| 文件域合规 | 不检测 E/U 产出是否对齐 | _pipe_mode vs STAGES 不对应 |
+
+#### 8.6.2 升级内容
+
+**新增三类哨卡检查**，与 pytest/mypy/ruff 并列：
+
+| 关卡 | 检查什么 | 怎么验 | 谁 |
+|------|------|------|:--:|
+| **管道模式冒烟测试** | full/fast/offline 各跑一次 entity_spoof，验证产出非空 + 阶段日志完整 | 三条 CLI 命令，对比输出 | QA |
+| **GUI 契约对齐检查** | settings_dialog 的 mode 值 → 对照 pipeline.py STAGES 注册表 → 验证可见性逻辑 | 读代码 + 跑 GUI 手动校验 | QA |
+| **功能完整性检查表** | 对照 plan.md 交付清单，逐项勾验（非代码质量指标） | 人工 ± 自动化脚本 | QA |
+
+#### 8.6.3 验收条件标准化
+
+每个 plan.md 中的交付项，附带明确的验收条件，写入 PM2Q 指令：
+
+```
+v0.6.0 交付：自迭代建议引擎
+  验收：
+  ├── entity_spoof full 模式扫描 → decision_log 含 suggest_whitelist/suggest_blacklist
+  ├── GUI 设置页出现「待审核建议」面板
+  └── 手动确认一条建议 → whitelist.json 被正确更新
+  谁验：QA
+```
+
+PM 不再自行逐个功能验证。QA 按验收条件执行，报告逐项通过/失败。
+
+---
+
+### 8.7 接口冻结纪律 — v0.5.0 架构革新的教训
+
+#### 8.7.1 发生了什么
+
+v0.5.0 为快速解决 v0.4.0 的技术债务和接线噩梦，通过架构革新（契约式管道 + 多路径）一次性重写了管道调度层。但忽略了一个关键前提：**接口冻结**。
+
+```
+v0.4.0-beta 的成功模式（接口先冻结，E/U 再并行）：
+  E 冻结 PipelineContext + pipeline.json → U 按契约开发 → 一次对齐 ✅
+
+v0.5.0 的失败模式（E/U 同时动，互相等）：
+  E 改 STAGES 注册表 → U 改 settings_dialog mode 映射
+  → E 改 decision_log 结构 → U 改 DecisionTraceDialog 解析
+  → 三模式同时暴露，E 和 U 反复排查对齐
+  → 决策链被锁死在 full 上，fast/offline GUI 改了又改 ❌
+```
+
+**根因**：小架构革新（管道逻辑梳理清楚）带动大架构混沌（GUI 协同完全没跟上）。前后端同时变动，没有提前做接口设计，接口冻结步骤被跳过。
+
+#### 8.7.2 v0.6.0 纪律
+
+任何跨 E/U 的功能，强制执行「先冻结，后并行」：
+
+| 步骤 | 谁 | 做什么 | 冻结物 |
+|:--:|:--:|------|------|
+| 1 | E | 完成接口定义，写入 `workspace/E/interface-{version}.md` | 字段名、类型、示例值 |
+| 2 | S | 审阅接口，确认与 plan.md 一致 | — |
+| 3 | PM | PM→U 下发冻结后的接口文档 | — |
+| 4 | E+U | 并行开发，E 不改接口，U 只读冻结版本 | 冻结物不可变 |
+| 5 | QA | 按接口文档验证 E/U 产出对齐 | — |
+
+**铁律**：步骤 3 完成前，U 不动代码。步骤 3 完成后，E 不改接口。任何接口变更 → 重新走步骤 1-3。
+
 ---
 
 ## 九、v0.7.0 展望 —— 跨平台分发 + 领域拓展
