@@ -12,10 +12,14 @@ L4 联网自动核查 —— 对候选实体执行 Web 搜索验证。
 
 from __future__ import annotations
 
+import datetime
 import re
 from typing import TYPE_CHECKING
 
+from ..logger import setup_gehd_logger
 from ..search.adapter import SearchAdapter
+
+_web_logger = setup_gehd_logger('gehd.web_verify')
 
 if TYPE_CHECKING:
     from ..config import GEHDConfig
@@ -136,8 +140,10 @@ def verify_queue(l4_queue: list[dict], config: GEHDConfig) -> list[dict]:
             entry['search_result'] = {
                 'query': entry.get('word', ''), 'snippets': [], 'url': '', 'confidence': 0,
             }
+        _web_logger.info('联网核查: 后端不可用 — %d 条标记 unable', len(l4_queue))
         return l4_queue
 
+    t0 = datetime.datetime.now()
     for entry in l4_queue:
         word = entry.get('word', '')
         category = entry.get('category', '')
@@ -151,6 +157,13 @@ def verify_queue(l4_queue: list[dict], config: GEHDConfig) -> list[dict]:
         entry['status'] = status
         entry['search_result'] = result
 
+    elapsed = (datetime.datetime.now() - t0).total_seconds()
+    real = sum(1 for e in l4_queue if e.get('status') == 'verified_real')
+    fake = sum(1 for e in l4_queue if e.get('status') == 'verified_fake')
+    _web_logger.info(
+        '联网核查完成: %d条, real=%d, fake=%d (%.1fs)',
+        len(l4_queue), real, fake, elapsed,
+    )
     return l4_queue
 
 

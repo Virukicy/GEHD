@@ -4,9 +4,14 @@ LLM 适配层 —— 抽象基类 + OpenAI 适配器 + 工厂函数。
 v0.4.0-rc: CLI/GUI 共享 create_llm_adapter_from_config()。
 """
 
+import datetime
 import json
 from abc import ABC, abstractmethod
 from pathlib import Path
+
+from ..logger import setup_gehd_logger
+
+_llm_logger = setup_gehd_logger('gehd.llm')
 
 
 class LLMAdapter(ABC):
@@ -39,6 +44,8 @@ class OpenAIAdapter(LLMAdapter):
         except ImportError:
             raise ImportError('httpx 是 LLM 调用的必需依赖') from None
 
+        _llm_logger.info('LLM调用 model=%s msgs=%d', model, len(messages))
+        t0 = datetime.datetime.now()
         resp = httpx.post(
             f'{self._base_url}/chat/completions',
             headers={
@@ -53,6 +60,8 @@ class OpenAIAdapter(LLMAdapter):
             timeout=60,
         )
         resp.raise_for_status()
+        elapsed = (datetime.datetime.now() - t0).total_seconds()
+        _llm_logger.info('LLM响应 status=%d (%.1fs)', resp.status_code, elapsed)
         data: dict = resp.json()
         return str(data['choices'][0]['message']['content'])
 

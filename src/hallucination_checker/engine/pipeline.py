@@ -12,6 +12,10 @@ from __future__ import annotations
 import datetime
 from typing import TYPE_CHECKING, TypedDict
 
+from .logger import save_scan_archive, setup_gehd_logger
+
+_log = setup_gehd_logger('gehd.pipeline')
+
 if TYPE_CHECKING:
     from ..io.document_text import DocumentText
     from .config import GEHDConfig
@@ -88,6 +92,8 @@ def run_pipeline(
     pipeline_cfg = _load_pipeline_config()
     mode = pipeline_cfg.get('mode', 'full')
     stages = STAGES.get(mode, STAGES['full'])
+    scan_id = datetime.datetime.now().strftime('scan_%Y%m%d_%H%M%S')
+    _log.info('扫描开始 scan_id=%s mode=%s', scan_id, mode)
 
     # 2. 验证适配器契约
     _validate_adapter_contracts(pipeline_cfg)
@@ -113,7 +119,11 @@ def run_pipeline(
             continue
         if progress_callback:
             progress_callback(stage_name)
+        t0 = datetime.datetime.now()
         context = _validate_and_run_stage(stage_name, context, llm, config)
+        elapsed = (datetime.datetime.now() - t0).total_seconds()
+        status = context.get('status', {}).get(stage_name, 'completed')
+        _log.info('[%s] %s (%.1fs)', stage_name, status, elapsed)
 
     # 6. 生成验证队列
     if output_verify_queue and 'output_queue' in stages:
@@ -121,6 +131,18 @@ def run_pipeline(
 
     # 7. 审计信息注入 stats
     context.setdefault('stats', {})['_decision_log'] = context.get('decision_log', [])
+
+    # 8. 扫描完成 — 日志 + 归档
+    _log.info(
+        '扫描完成 scan_id=%s issues=%d warnings=%d',
+        scan_id,
+        len(context.get('issues', [])),
+        len(context.get('warnings', [])),
+    )
+    save_scan_archive(
+        scan_id, dict(context),
+        {'mode': mode, 'model': pipeline_cfg.get('_model_note', ''), 'provider': 'deepseek'},
+    )
 
     return context
 
