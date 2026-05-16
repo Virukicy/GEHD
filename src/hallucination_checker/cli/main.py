@@ -24,8 +24,10 @@ from ..io.reporter import (
     print_report_header,
 )
 from ..logging_setup import get_logger
+from ..engine.logger import setup_gehd_logger
 
 logger = get_logger(__name__)
+_cli_logger = setup_gehd_logger('gehd.cli')
 
 
 def check_docx(
@@ -45,6 +47,15 @@ def check_docx(
     """
     if config is None:
         config = load_config()
+
+    # CLI 操作日志
+    try:
+        import json
+        with open('config/pipeline.json', encoding='utf-8') as f:
+            pmode = json.load(f).get('mode', 'full')
+    except Exception:
+        pmode = 'full'
+    _cli_logger.info('CLI扫描 文档=%s verify=%s audit=%s mode=%s', filepath, do_verify, do_audit, pmode)
 
     # 加载文档
     try:

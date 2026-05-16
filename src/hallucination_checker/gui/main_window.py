@@ -53,6 +53,7 @@ from PySide6.QtWidgets import (
 
 from hallucination_checker.engine.config import GEHD_VERSION, load_config
 from hallucination_checker.engine.cross_validate import gehd_cross_validate
+from hallucination_checker.engine.logger import setup_gehd_logger
 from hallucination_checker.gui.settings_dialog import get_config_dir
 from hallucination_checker.gui.theme import Theme
 from hallucination_checker.io.document_text import DocumentText
@@ -63,6 +64,9 @@ _CONFIG_DIR = get_config_dir()
 _SUPPORTED_EXTENSIONS: frozenset[str] = frozenset({
     '.docx', '.txt', '.md', '.html', '.htm', '.jsonl', '.csv', '.pdf', '.pptx',
 })
+
+# GUI 层日志
+_gui_logger = setup_gehd_logger('gehd.gui')
 _FACTORY_MAP: dict[str, Any] = {
     '.docx': DocumentText.from_docx,
     '.txt':  DocumentText.from_text,
@@ -708,6 +712,7 @@ class MainWindow(QMainWindow):
         )
         if path:
             self._file_input.setText(path)
+            _gui_logger.info('打开文档 path=%s', path)
 
     # ---- 扫描 ----
 
@@ -746,6 +751,15 @@ class MainWindow(QMainWindow):
 
         self._current_text = text
 
+        # 日志记录
+        try:
+            with open(_CONFIG_DIR / 'pipeline.json', encoding='utf-8') as f:
+                pipe_data = json.load(f)
+            sp_mode = pipe_data.get('mode', 'full')
+        except (FileNotFoundError, json.JSONDecodeError):
+            sp_mode = 'full'
+        _gui_logger.info('开始扫描 path=%s mode=%s cross_validate=%s', filepath, sp_mode, cross_validate)
+
         self._worker = ScanWorker(text, config, output_l4, cross_validate, self)
         self._worker.finished.connect(self._on_scan_finished)
         self._worker.error_msg.connect(self._on_scan_error)
@@ -779,6 +793,7 @@ class MainWindow(QMainWindow):
         )
 
     def _on_scan_error(self, error: str) -> None:
+        _gui_logger.error('扫描异常 %s', error, exc_info=True)
         self._scan_btn.setEnabled(True)
         self._scan_btn.setText('扫描')
         self._statusbar.showMessage('扫描失败')
@@ -1127,7 +1142,7 @@ class MainWindow(QMainWindow):
         if self._current_context and self._current_context.get('decision_log'):
             audit_action = QAction('查看决策链', self)
             audit_action.triggered.connect(
-                lambda: DecisionTraceDialog(self._current_context.get('decision_log', []), self).exec()
+                lambda: self._show_decision_trace(word)
             )
             menu.addAction(audit_action)
             menu.addSeparator()
@@ -1192,6 +1207,11 @@ class MainWindow(QMainWindow):
             self._update_action_button()
 
     # ---- 设置窗口 ----
+
+    def _show_decision_trace(self, word: str) -> None:
+        _gui_logger.info('查看决策链 entity=%s', word)
+        dl = self._current_context.get('decision_log', []) if self._current_context else []
+        DecisionTraceDialog(dl, self).exec()
 
     def _open_settings(self) -> None:
         if (hasattr(self, '_settings_dialog')
