@@ -13,6 +13,9 @@
 ## 快速开始
 
 ```bash
+# 配置 API 密钥（联网核查 + LLM 功能必需）
+cp config/secrets.json.template config/secrets.json
+
 # 安装
 pip install -e .
 
