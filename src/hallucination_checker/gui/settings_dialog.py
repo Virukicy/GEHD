@@ -281,7 +281,7 @@ class SettingsDialog(QDialog):
 
         self._pipe_mode = QComboBox()
         self._pipe_mode.addItems(['full', 'fast', 'offline'])
-        self._pipe_mode.setToolTip('full=全链路 / fast=仅规则引擎 / offline=规则+LLM无联网')
+        self._pipe_mode.setToolTip('full=全链路(规则+搜索+LLM) / fast=规则+LLM直验(无联网) / offline=仅规则引擎')
         mode_form.addRow('模式：', self._pipe_mode)
 
         self._pipe_output_queue = QCheckBox('生成验证队列')
@@ -311,7 +311,7 @@ class SettingsDialog(QDialog):
 
         layout.addWidget(self._search_group)
 
-        # LLM 设置（非 fast 模式可见）
+        # LLM 设置（full/fast 模式可见，offline 隐藏）
         self._llm_group = QGroupBox('LLM 设置')
         llm_form = QFormLayout(self._llm_group)
 
@@ -330,8 +330,8 @@ class SettingsDialog(QDialog):
 
     def _on_pipe_mode_changed(self) -> None:
         mode = self._pipe_mode.currentText()
-        self._search_group.setVisible(mode != 'fast')
-        self._llm_group.setVisible(mode != 'fast')
+        self._search_group.setVisible(mode == 'full')
+        self._llm_group.setVisible(mode in ('full', 'fast'))
 
     # --- 主题 Tab ---
 

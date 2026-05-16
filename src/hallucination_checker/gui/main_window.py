@@ -666,7 +666,7 @@ class MainWindow(QMainWindow):
             with open(path, encoding='utf-8') as f:
                 data = json.load(f)
             mode = data.get('mode', 'full')
-            mode_labels = {'full': '全链路', 'fast': '仅规则引擎', 'offline': '离线'}
+            mode_labels = {'full': '全链路', 'fast': '规则+LLM直验', 'offline': '仅规则引擎'}
             self._pipeline_bar.setText(f'管道: {mode_labels.get(mode, mode)}')
         except (FileNotFoundError, json.JSONDecodeError):
             self._pipeline_bar.setText('管道: 规则引擎（本地）')
