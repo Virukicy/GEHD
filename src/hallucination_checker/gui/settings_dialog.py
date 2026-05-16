@@ -11,7 +11,9 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import Qt
+from hallucination_checker.engine.config import get_user_data_dir, save_user_config
+
+from PySide6.QtCore import Qt  # noqa: E402
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -21,6 +23,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
@@ -323,6 +326,45 @@ class SettingsDialog(QDialog):
 
         layout.addWidget(self._llm_group)
 
+        # API Key 设置
+        key_group = QGroupBox('API Key')
+        key_form = QFormLayout(key_group)
+
+        self._tavily_key_input = QLineEdit()
+        self._tavily_key_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self._tavily_key_input.setPlaceholderText('留空则关闭联网核查')
+        tavily_row = QHBoxLayout()
+        tavily_row.addWidget(self._tavily_key_input, 1)
+        tavily_show = QPushButton('👁')
+        tavily_show.setFixedWidth(40)
+        tavily_show.setCheckable(True)
+        tavily_show.toggled.connect(lambda c: self._tavily_key_input.setEchoMode(
+            QLineEdit.EchoMode.Normal if c else QLineEdit.EchoMode.Password))
+        tavily_row.addWidget(tavily_show)
+        tavily_w = QWidget()
+        tavily_w.setLayout(tavily_row)
+        key_form.addRow('Tavily 搜索：', tavily_w)
+
+        self._llm_key_input = QLineEdit()
+        self._llm_key_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self._llm_key_input.setPlaceholderText('留空则关闭 AI 辅助')
+        llm_row = QHBoxLayout()
+        llm_row.addWidget(self._llm_key_input, 1)
+        llm_show = QPushButton('👁')
+        llm_show.setFixedWidth(40)
+        llm_show.setCheckable(True)
+        llm_show.toggled.connect(lambda c: self._llm_key_input.setEchoMode(
+            QLineEdit.EchoMode.Normal if c else QLineEdit.EchoMode.Password))
+        llm_row.addWidget(llm_show)
+        llm_w = QWidget()
+        llm_w.setLayout(llm_row)
+        key_form.addRow('LLM (DeepSeek)：', llm_w)
+
+        self._key_hint = QLabel('')
+        self._key_hint.setStyleSheet('color: #999; font-size: 11px;')
+        key_form.addRow('', self._key_hint)
+        layout.addWidget(key_group)
+
         # 模式联动
         self._pipe_mode.currentIndexChanged.connect(self._on_pipe_mode_changed)
         self._on_pipe_mode_changed()
@@ -334,6 +376,13 @@ class SettingsDialog(QDialog):
         mode = self._pipe_mode.currentText()
         self._search_group.setVisible(mode == 'full')
         self._llm_group.setVisible(mode in ('full', 'fast'))
+        # 动态 Key 提示
+        hints = {
+            'full': '所需 Key: Tavily + LLM (DeepSeek)',
+            'fast': '所需 Key: LLM (DeepSeek)',
+            'offline': '离线模式，无需 Key',
+        }
+        self._key_hint.setText(hints.get(mode, ''))
 
     # --- 主题 Tab ---
 
@@ -403,6 +452,20 @@ class SettingsDialog(QDialog):
         self._load_thresholds()
         self._load_pipeline()
         self._load_search()
+        self._load_keys()
+
+    def _load_keys(self) -> None:
+        try:
+            user_dir = get_user_data_dir()
+            secrets_path = user_dir / 'secrets.json'
+            if secrets_path.exists():
+                with open(secrets_path, encoding='utf-8') as f:
+                    secrets = json.load(f)
+                self._tavily_key_input.setText(secrets.get('tavily_api_key', ''))
+                self._llm_key_input.setText(secrets.get('llm_api_key', ''))
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            self._tavily_key_input.setText('')
+            self._llm_key_input.setText('')
 
     def _load_whitelist(self) -> None:
         items = _read_json_array(self._whitelist_path, 'whitelist')
@@ -437,6 +500,17 @@ class SettingsDialog(QDialog):
         self._save_thresholds()
         self._save_pipeline()
         self._save_search()
+        self._save_keys()
+
+    def _save_keys(self) -> None:
+        secrets = {
+            'tavily_api_key': self._tavily_key_input.text(),
+            'llm_api_key': self._llm_key_input.text(),
+        }
+        try:
+            save_user_config('secrets.json', secrets)
+        except OSError:
+            pass  # 保存失败不影响其他配置写入
 
     def _save_whitelist(self) -> None:
         text = self._whitelist_edit.toPlainText().strip()

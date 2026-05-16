@@ -58,6 +58,20 @@ from hallucination_checker.gui.theme import Theme
 from hallucination_checker.io.document_text import DocumentText
 
 _CONFIG_DIR = get_config_dir()
+_USER_DATA_DIR: Path | None = None
+
+def _get_user_secrets() -> dict[str, str]:
+    """读取用户 secrets.json，返回 {'tavily_api_key': '', 'llm_api_key': ''}。"""
+    global _USER_DATA_DIR
+    try:
+        if _USER_DATA_DIR is None:
+            from hallucination_checker.engine.config import get_user_data_dir
+            _USER_DATA_DIR = get_user_data_dir()
+        with open(_USER_DATA_DIR / 'secrets.json', encoding='utf-8') as f:
+            data: dict[str, Any] = json.load(f)
+        return {str(k): str(v) for k, v in data.items()}
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {}
 
 # ---- 多格式支持 ----
 _SUPPORTED_EXTENSIONS: frozenset[str] = frozenset({
@@ -381,6 +395,23 @@ class MainWindow(QMainWindow):
         self._setup_statusbar()
         self._refresh_widget_theme()
         self._refresh_toolbar_labels()
+        self._show_first_launch_guidance()
+
+    def _show_first_launch_guidance(self) -> None:
+        """首次启动：检测 Key 均为空时弹引导提示。"""
+        secrets = _get_user_secrets()
+        tavily_key = secrets.get('tavily_api_key', '')
+        llm_key = secrets.get('llm_api_key', '')
+        if tavily_key or llm_key:
+            return  # 已有 Key，不弹
+        QMessageBox.information(
+            self,
+            'GEHD — 开箱即用',
+            'GEHD 开箱即用（offline 离线模式）\n\n'
+            '前往设置页填写 API Key 可解锁：\n'
+            '  • 联网核查（Tavily Key）\n'
+            '  • AI 辅助验证（DeepSeek Key）',
+        )
 
     # ---- 主题 ----
 
