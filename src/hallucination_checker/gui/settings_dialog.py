@@ -286,6 +286,8 @@ class SettingsDialog(QDialog):
 
         self._pipe_output_queue = QCheckBox('生成验证队列')
         mode_form.addRow('', self._pipe_output_queue)
+        self._pipe_cross_validate = QCheckBox('三路交叉校验（开销 3x）')
+        mode_form.addRow('', self._pipe_cross_validate)
         layout.addWidget(mode_group)
 
         # 联网核查子设置（full 模式展开）
@@ -472,12 +474,14 @@ class SettingsDialog(QDialog):
             self._pipe_mode.setCurrentIndex(idx)
         steps = data.get('steps', {})
         self._pipe_output_queue.setChecked(steps.get('output_verify_queue', False))
+        self._pipe_cross_validate.setChecked(steps.get('cross_validate', False))
 
     def _save_pipeline(self) -> None:
         data = _read_json_obj(_CONFIG_DIR / 'pipeline.json')
         data['mode'] = self._pipe_mode.currentText()
         steps = data.setdefault('steps', {})
         steps['output_verify_queue'] = self._pipe_output_queue.isChecked()
+        steps['cross_validate'] = self._pipe_cross_validate.isChecked()
         _write_json_obj(_CONFIG_DIR / 'pipeline.json', data)
 
     def _load_search(self) -> None:

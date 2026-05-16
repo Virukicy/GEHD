@@ -381,6 +381,7 @@ class MainWindow(QMainWindow):
         self._setup_legend()
         self._setup_statusbar()
         self._refresh_widget_theme()
+        self._refresh_toolbar_labels()
 
     # ---- 主题 ----
 
@@ -484,9 +485,8 @@ class MainWindow(QMainWindow):
         self._file_input.setMinimumWidth(320)
         self._browse_btn = QPushButton('浏览')
         self._browse_btn.clicked.connect(self._browse_file)
-        self._verify_checkbox = QCheckBox('生成验证队列')
-        self._cross_validate_checkbox = QCheckBox('多模型交叉校验')
-        self._cross_validate_checkbox.setToolTip('三路并行检测（默认/宽松/严格），交叉比对结果')
+        self._cross_label = QLabel('交叉校验: —')
+        self._queue_label = QLabel('验证队列: —')
         self._scan_btn = QPushButton('扫描')
         self._scan_btn.setMinimumWidth(72)
         self._scan_btn.clicked.connect(self._scan)
@@ -494,8 +494,8 @@ class MainWindow(QMainWindow):
         file_layout.addWidget(file_label)
         file_layout.addWidget(self._file_input, 1)
         file_layout.addWidget(self._browse_btn)
-        file_layout.addWidget(self._verify_checkbox)
-        file_layout.addWidget(self._cross_validate_checkbox)
+        file_layout.addWidget(self._cross_label)
+        file_layout.addWidget(self._queue_label)
         file_layout.addWidget(self._scan_btn)
         layout.addLayout(file_layout)
 
@@ -735,8 +735,18 @@ class MainWindow(QMainWindow):
             )
             return
 
-        output_l4 = self._verify_checkbox.isChecked()
-        cross_validate = self._cross_validate_checkbox.isChecked()
+        # 从 pipeline.json 读取设置（统一配置入口）
+        try:
+            with open(_CONFIG_DIR / 'pipeline.json', encoding='utf-8') as f:
+                pipe_data = json.load(f)
+            steps = pipe_data.get('steps', {})
+            cross_validate = steps.get('cross_validate', False)
+            output_l4 = steps.get('output_verify_queue', False)
+            sp_mode = pipe_data.get('mode', 'full')
+        except (FileNotFoundError, json.JSONDecodeError):
+            cross_validate = False
+            output_l4 = False
+            sp_mode = 'full'
 
         try:
             config = load_config()
@@ -751,13 +761,6 @@ class MainWindow(QMainWindow):
 
         self._current_text = text
 
-        # 日志记录
-        try:
-            with open(_CONFIG_DIR / 'pipeline.json', encoding='utf-8') as f:
-                pipe_data = json.load(f)
-            sp_mode = pipe_data.get('mode', 'full')
-        except (FileNotFoundError, json.JSONDecodeError):
-            sp_mode = 'full'
         _gui_logger.info('开始扫描 path=%s mode=%s cross_validate=%s', filepath, sp_mode, cross_validate)
 
         self._worker = ScanWorker(text, config, output_l4, cross_validate, self)
@@ -1223,7 +1226,28 @@ class MainWindow(QMainWindow):
         from hallucination_checker.gui.settings_dialog import SettingsDialog
         self._settings_dialog = SettingsDialog(self, theme_callback=self.set_theme, current_theme=self.theme)
         self._settings_dialog.setWindowModality(Qt.WindowModality.NonModal)
+        self._settings_dialog.finished.connect(self._on_settings_closed)
         self._settings_dialog.show()
+
+    def _on_settings_closed(self) -> None:
+        self._refresh_toolbar_labels()
+        self._refresh_pipeline_status()
+
+    def _refresh_toolbar_labels(self) -> None:
+        """从 pipeline.json 刷新工具栏标签。"""
+        try:
+            with open(_CONFIG_DIR / 'pipeline.json', encoding='utf-8') as f:
+                pipe_data = json.load(f)
+            steps = pipe_data.get('steps', {})
+            self._cross_label.setText(
+                f'交叉校验: {"开" if steps.get("cross_validate") else "关"}'
+            )
+            self._queue_label.setText(
+                f'验证队列: {"开" if steps.get("output_verify_queue") else "关"}'
+            )
+        except (FileNotFoundError, json.JSONDecodeError):
+            self._cross_label.setText('交叉校验: —')
+            self._queue_label.setText('验证队列: —')
 
 
 # ---- 入口 ----
