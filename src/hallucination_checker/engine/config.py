@@ -847,15 +847,27 @@ def _load_search_config(filepath: Path) -> dict | None:
 
 
 def _find_config_dir() -> Path | None:
-    """定位 config/ 目录。"""
+    """优先级：用户目录 → 项目目录。"""
     candidates = [
         Path.cwd() / 'config',
         Path(__file__).resolve().parents[3] / 'config',  # 项目根目录
     ]
+
+    app_cfg = None
     for p in candidates:
         if p.is_dir():
-            return p
-    return None
+            app_cfg = p
+            break
+
+    if app_cfg is None:
+        return None
+
+    user_dir = get_user_data_dir()
+    _ensure_user_config(user_dir, app_cfg)
+    user_cfg = user_dir / 'config'
+    if user_cfg.exists():
+        return user_cfg
+    return app_cfg
 
 
 def load_config() -> GEHDConfig:
@@ -870,6 +882,56 @@ def load_config() -> GEHDConfig:
         config = GEHDConfig.default()
     _load_secrets(config)
     return config
+
+
+# ---- 用户数据目录 ----
+
+def get_user_data_dir() -> Path:
+    """返回用户数据根目录（自动创建）。
+
+    macOS:   ~/Library/Application Support/GEHD/
+    Windows: %APPDATA%/GEHD/
+    Linux:   ~/.local/share/GEHD/
+    """
+    import platform
+
+    system = platform.system()
+    if system == 'Darwin':
+        base = Path.home() / 'Library' / 'Application Support' / 'GEHD'
+    elif system == 'Windows':
+        base = Path.home() / 'AppData' / 'Roaming' / 'GEHD'
+    else:
+        base = Path.home() / '.local' / 'share' / 'GEHD'
+    base.mkdir(parents=True, exist_ok=True)
+    return base
+
+
+def _ensure_user_config(user_dir: Path, app_cfg_dir: Path) -> None:
+    """首次启动：创建用户配置目录 + 复制默认文件。"""
+    import shutil
+
+    user_cfg = user_dir / 'config'
+    if user_cfg.exists():
+        return
+
+    user_cfg.mkdir(parents=True)
+
+    for f in app_cfg_dir.glob('*.json'):
+        shutil.copy2(f, user_cfg / f.name)
+
+    secrets = user_cfg / 'secrets.json'
+    if not secrets.exists():
+        template = app_cfg_dir / 'secrets.json.template'
+        if template.exists():
+            shutil.copy2(template, secrets)
+
+
+def save_user_config(filename: str, data: dict) -> None:
+    """将配置 dict 写入用户数据目录。"""
+    path = get_user_data_dir() / 'config' / filename
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
 
 def _load_secrets(config: GEHDConfig) -> None:
