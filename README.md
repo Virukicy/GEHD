@@ -4,9 +4,9 @@
 [![Version](https://img.shields.io/badge/version-0.5.2-informational)](https://github.com/Virukicy/GEHD)
 [![Tests](https://img.shields.io/badge/tests-127%2F127-brightgreen)](tests/)
 
-基于**纯规则引擎**的轻量级文档幻觉核查工具。输入 `.docx` 文档，自动检测 AI 生成内容中可能被编造的专有名词、统计数据、引述和时间线。
+基于**规则+LLM+搜索三层管道**的文档幻觉核查工具。输入 `.docx` 文档，自动检测 AI 生成内容中可能被编造的专有名词、统计数据、引述和时间线。
 
-> **核心理念**：不用 LLM 检查 LLM（"自己查自己"有致命缺陷），而是用**可审计、可解释**的正则 + 启发式规则。
+> **核心理念**：三路径按需选深度，配置驱动、全链路可审计
 
 ---
 
@@ -23,7 +23,7 @@ pip install -e .
 python -m hallucination_checker document.docx
 
 # 输出 L4 验证队列（含待联网核查清单）
-python -m hallucination_checker document.docx --verify
+python -m hallucination_checker document.docx --mode full
 ```
 
 <details>
@@ -31,7 +31,7 @@ python -m hallucination_checker document.docx --verify
 
 ```
 =================================================================
-  DOCX 自检报告 v0.4.0-alpha (GEHD + L4联网核查)
+  DOCX 自检报告 v0.5.2 (GEHD 管道模式)
 =================================================================
   文件: report.docx
   段落: 50  |  表格: 0
@@ -45,7 +45,7 @@ python -m hallucination_checker document.docx --verify
     2. [一致性-高频实体] "辰星微电子"出现4次
     ...
 
-  --- GEHD v0.4.0-alpha 统计 ---
+  --- GEHD v0.5.2 统计 ---
   [L3] 实体候选: 16  (高危:0 中危:7 低危:9)
   [L2.5] 数据/引述候选: 4
 =================================================================
@@ -100,7 +100,7 @@ python -m hallucination_checker document.docx --verify
 |------|------|
 | [docs/architecture.md](./docs/architecture.md) | 架构全景：模块结构、数据流、配置系统、测试体系 |
 | [docs/development.md](./docs/development.md) | 开发指南：环境搭建、运行测试、代码规范、修改场景 |
-| [docs/ai-guide.md](./docs/ai-guide.md) | AI 代理操作指南：自迭代循环、配置修改、故障排查 |
+| [docs/ai-guide.md](./docs/ai-guide.md) | 开发者参考手册：管道调用、审计模式、故障排查 |
 | [docs/COLLABORATION.md](./docs/COLLABORATION.md) | 多智能体协作协议：文件域划分、Git 工作流、冲突处理 |
 | [CHANGELOG.md](./CHANGELOG.md) | 版本变更记录 |
 

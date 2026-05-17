@@ -28,6 +28,67 @@
 - ruff: 零错误
 - L4 反写清理率: 80%（Warnings 108→22）
 
+## [0.5.2] — 2026-05-17
+
+### 协作体系
+- 传递文档内部结构标准化（六字段头部 + A/B/C 类别）
+- 身份卡注入制度（PM 每次调度携带）
+- PM 短指令词典（PM2D / D回执 等）
+- D 组 Git 标准化流程
+- 接口冻结纪律 §7.8
+- S 组正式入协（战略规划 → PM 审批流）
+
+### 架构
+- 用户数据目录 XDG 分离 (~/.gehd/)
+
+---
+
+## [0.5.1] — 2026-05-15
+
+### 审计
+- decision_log 全链路审计
+- CLI --audit 命令
+- GUI 审计视图
+
+### 日志
+- gehd.log 结构化日志系统
+
+---
+
+## [0.5.0] — 2026-05-14
+
+### 管道架构
+- 契约式管道：PipelineContext + 双层契约
+- 三路径模式：full / fast / offline
+- 管道编排器：四阶段注册（rules_engine → llm_post_filter → search_adapter → llm_adapter）
+- LLMAdapter + SearchAdapter 双适配层解耦
+
+### 修复
+- v0.4.0-rc 全部 8 类故障（接线缺失/数据缺失/字段不对齐/配置读后丢弃）
+
+---
+
+## [0.4.0] — 2026-05-13
+
+### 新增
+- 管道编排器（PipelineOrchestrator）
+- LLM 适配层（DeepSeek）
+- SearchAdapter 抽象层（Tavily / DuckDuckGo / 离线占位）
+- 配置三分层（thresholds / pipeline / llm）
+- GUI 管道选项卡 + 模式切换
+- S 组首次入场（战略规划）
+
+---
+
+## [0.4.0-rc] — 2026-05-13
+- LLM 后置纠正 + 端到端验收
+
+## [0.4.0-beta] — 2026-05-13
+- LLM 前置过滤 + GUI 管道选项卡
+
+## [0.4.0-alpha] — 2026-05-13
+- 管道编排器 + LLM 适配层初版
+
 ---
 
 ## [0.3.1] — 2026-05-12
