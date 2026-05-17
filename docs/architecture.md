@@ -1,7 +1,7 @@
 # GEHD 架构文档
 
 > **版本**：v0.5.2  
-> **最后更新**：2026-05-13  
+> **最后更新**：2026-05-17  
 > **目标读者**：AI 助手（Gemini/Claude/GPT/DeepSeek）或真人开发者  
 > **阅读顺序**：本文 → [development.md](./development.md) → [ai-guide.md](./ai-guide.md)（AI 用户）→ 代码
 
@@ -9,11 +9,14 @@
 
 ## 一、项目是什么
 
-**GEHD**（Generalized Entity Hallucination Detection）是一个**纯规则引擎**的文档幻觉核查工具。
+**GEHD**（Generalized Entity Hallucination Detection）是一个**规则+LLM+搜索三层管道**的文档幻觉核查工具。
 
-输入一份 `.docx` 文档，GEHD 用六层规则引擎扫描其中的专有名词、统计数据、引述和时间线，标记出"可能被 AI 编造"的内容——即幻觉（hallucination）。
+输入一份文档（.docx/.pdf/.md 等），GEHD 用六层规则引擎扫描可疑内容，再通过可配置的管道（full 高可信 / fast 快速低成本 / offline 纯规则离线）进行 LLM 辅助过滤和联网验证。用户按需选择核查深度。
 
-**核心差异化优势**：GEHD 不使用 LLM 自查（LLM 自查有"自己检查自己"的致命缺陷），而是用纯正则 + 启发式规则，结果可审计、可解释。
+**核心差异化优势**：
+- **三路径按需选深度**：关键文档走 full（规则+搜索+LLM），批量扫描走 fast（规则+LLM 直接核验），离线环境走 offline（纯规则，零 API 成本）
+- **全链路可审计**：每个管道阶段的决策写入 decision_log，可通过 CLI --audit 或 GUI 审计视图追溯
+- **配置驱动，零代码调优**：白名单/黑名单/评分阈值全部外部化 JSON，修改即生效
 
 ---
 
@@ -74,6 +77,9 @@ GEHD项目/
 │   ├── declaration_patterns.json # L3.7 声明性构造检测正则规则
 │   ├── exclude_words.json     # L3 排除词
 │   ├── adjective_prefixes.json # L3.5 形容词前缀
+│   ├── pipeline.json          # 管道模式配置
+│   ├── llm.json               # LLM 供应商/模型
+│   └── search.json            # 搜索后端配置
 │   └── thresholds.json        # 评分阈值 + 文本处理参数
 │
 ├── tests/                      # === 测试 ===
@@ -144,6 +150,12 @@ GEHD项目/
 | 子串白名单剩余过长 | ↓ 降分 | -3/字（上限-15） |
 
 **分级标准**：≥65 高危（issue）、45-64 中危（warning）、<45 低危（仅 L4 队列）
+
+---
+
+### 管道调度层
+
+上述 L1-L4 引擎层由 `engine/pipeline.py` 统一调度。用户选择验证模式后，管道编排器按注册表自动组合阶段序列，每阶段执行前验证契约，执行后写入 decision_log。各层代码不变，只变调度方式。
 
 ---
 
@@ -252,29 +264,40 @@ config/*.json（外部化）  >  engine/config.py（内置默认值）
 
 ---
 
-## 六点半、审计链路（v0.5.0-beta）
+## 七、管道架构（v0.5.0）
 
-### decision_log
+### 7.1 三路径模式
 
-管道每个阶段执行后写入结构化决策日志，包含：
-- 阶段名称、输入候选数、输出候选数
-- 决策类型（passed/skipped/filtered/verified）
-- 跳过原因（candidates 为空、前置阶段中断）
+full:  规则引擎 → LLM前置过滤 → 联网搜索 → LLM后置纠正 → 后处理
+fast:  规则引擎 → LLM前置过滤 → LLM直接核验 ────────────→ 后处理
+offline: 规则引擎 ──────────────────────────────────────→ 后处理
 
-### CLI --audit 模式
+### 7.2 PipelineContext 统一数据格式
 
-`python -m hallucination_checker file.docx --audit` 输出完整 decision_log JSON，每条含时间戳和阶段元数据。
+管道各阶段通过 PipelineContext 交换数据，包含：
+- candidates: list[dict] — 候选实体列表
+- l4_queue: list[dict] — L4 待验证队列
+- decision_log: list[dict] — 结构化决策追溯
+- status: PipelineStatus — 管道运行状态
 
-### GUI 审计视图
+### 7.3 双层契约验证
 
-管道状态栏升级为审计视图：
-- 六阶段步骤列表（含 decision_log 摘要）
-- 颜色编码（绿=通过、灰=跳过、红=异常）
-- 点击展开日志详情
+管道启动时一次性验证所有阶段的前置条件：
+
+STAGE_CONTRACTS — 阶段间数据验证
+  - requires: 输入字段必须存在且非空
+  - produces: 输出字段名
+  - requires_nested: 嵌套路径验证（如 l4_queue[*].search_result.snippets）
+
+ADAPTER_CONTRACTS — 外部能力配置验证
+  - requires_config: 必需配置键（如 llm.json.model）
+  - forbidden_values: 禁止的占位值（如 'gpt-4o'）
+
+双层契约杜绝了 v0.4.0-rc 的全部 8 类故障（接线缺失/数据缺失/字段不对齐/配置读后丢弃等）。
 
 ---
 
-## 六点七八、日志系统（v0.5.1）
+## 八、日志系统（v0.5.1）
 
 ### engine/logger.py
 
@@ -286,7 +309,7 @@ JSON 归档含：时间戳、输入文件、管道模式、各阶段决策摘要
 
 ---
 
-## 六点九、用户数据目录（v0.5.2）
+## 九、用户数据目录（v0.5.2）
 
 ### E 接口
 
@@ -299,7 +322,7 @@ JSON 归档含：时间戳、输入文件、管道模式、各阶段决策摘要
 
 ---
 
-## 七、版本历史
+## 十、版本历史
 
 | **v0.5.2** | 2026-05-16 | 用户数据目录：get_user_data_dir + GUI Key 管理 |
 
@@ -322,28 +345,4 @@ JSON 归档含：时间戳、输入文件、管道模式、各阶段决策摘要
 
 ---
 
-## 八、当前开发路线
-
-```
-✅ Iteration 1: 规范化 v0.1.x（已完成）
-   ├── P0-1: Git 仓库初始化
-   ├── P0-2: src-layout 目录结构
-   ├── P0-3: pyproject.toml
-   ├── P0-4: 拆分 806 行 → 14 个模块
-   └── P0-5: 外部化配置 → JSON
-
-✅ Iteration 2: 工程化 v0.2.0（已完成）
-   ├── ✅ P1-0: GEHDConfig dataclass 重构 — 30+全局变量→单dataclass
-   ├── ✅ P1-1: 全量类型注解 — mypy 22文件零错误
-   ├── ✅ P1-2: Ruff 格式化 + lint — 16文件格式化，25 lint→0
-   ├── ✅ P1-3: logging 文件日志 — gehd.log 含时间戳+结构化消息
-   ├── ✅ P1-4: 异常处理标准化 — except Exception→精确异常类型
-   └── ✅ P1-5: 单元测试 — 27新测试，覆盖率 30%→85%
-
-✅ Iteration 3: 壁垒化 v0.3.0（已完成）
-   ├── ✅ P2-1: L3.7 声明提取 — 语义检测 0→5 issues, 6类声明模式
-   ├── ✅ P2-2: 适配层补全 — from_text/from_markdown
-   ├── ✅ P2-3: L4 联网自动核查 — DuckDuckGo 两阶验证, 4种结果标签
-   ├── ✅ P2-4: 证据链生成 — 四段结构 (scoring/consistency/verification/recommendation)
-   └── ✅ P2-5: 多模型交叉校验 — 三路并行 + 强/弱/分歧共识
 ```

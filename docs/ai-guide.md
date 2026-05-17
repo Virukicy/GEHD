@@ -1,28 +1,24 @@
-# GEHD AI 代理操作指南
+# GEHD AI 代理 / 开发者参考手册
 
 > **目标读者**：任何 AI 助手（Gemini/Claude/GPT/DeepSeek 等），需要操作 GEHD 进行文档幻觉核查  
 > **前置阅读**：先读 [architecture.md](./architecture.md) 了解 GEHD 是什么  
-> **最后更新**：2026-05-09
+> **版本**：v0.5.2  
+> **最后更新**：2026-05-17
 
 ---
 
-## 一、你（AI）在 GEHD 生态中的角色
+## 一、你（AI / 开发者）在 GEHD 生态中的角色
 
-GEHD 是一个**半自动**幻觉核查工具。引擎负责扫描文档、标记可疑内容，但**你（AI）负责验证**。
+GEHD v0.5.1 的管道已全自动化。规则扫描、LLM 过滤、联网验证全部由引擎自动完成。你的角色不再是"手动验证"，而是：
+
+1. **调用管道** — 选择合适的验证模式（full/fast/offline）
+2. **消费结果** — 读取引擎输出的 issues/warnings/decision_log
+3. **调优配置** — 根据结果反馈更新白名单/黑名单（可选）
+4. **审计追溯** — 通过 --audit 或 GUI 审计视图追溯任意决策
 
 ```
-GEHD 引擎  →  输出候选列表（issues/warnings/L4队列）
-     ↓
-你（AI）   →  联网搜索验证候选词是否真实存在
-     ↓
-用户反馈   →  "这个词确实存在" / "这个词是编的"
-     ↓
-你（AI）   →  根据反馈更新配置（白名单/黑名单等）
-     ↓
-GEHD 引擎  →  下次扫描时自动加载更新后的配置
+你（AI/开发者）→ 选模式 → 管道全自动执行 → 结构化输出 → 你消费结果
 ```
-
-**核心原则**：GEHD 不会自己上网验证，不会自己更新配置。这两个动作都需要你来做。
 
 ---
 
@@ -31,152 +27,83 @@ GEHD 引擎  →  下次扫描时自动加载更新后的配置
 ### 调用 GEHD
 
 ```bash
-# 标准扫描（输出到终端）
-python -m hallucination_checker <文档路径>.docx
+# 完整模式（规则+搜索+LLM 全链路，最高可信度）
+python -m hallucination_checker document.docx --mode full
 
-# 完整扫描 + L4 验证队列导出为 JSON
-python -m hallucination_checker <文档路径>.docx --verify
-```
+# 快速模式（规则+LLM 直接核验，零搜索成本）
+python -m hallucination_checker document.docx --mode fast
 
-`--verify` 模式会在文档同目录生成 `_l4_queue.json`，包含所有待验证的候选词。
+# 离线模式（纯规则，零 API 成本）
+python -m hallucination_checker document.docx --mode offline
 
-### 读取 L4 验证队列
-
-```python
-import json
-
-with open("文档路径_l4_queue.json", "r", encoding="utf-8") as f:
-    queue = json.load(f)
-
-# 高危候选（≥65分）→ 优先验证
-deep_items = [q for q in queue["entities"] if q["score"] >= 65]
-
-# 中危候选（45-64分）→ 次优先
-medium_items = [q for q in queue["entities"] if 45 <= q["score"] < 65]
+# 审计模式（输出完整 decision_log JSON）
+python -m hallucination_checker document.docx --audit
 ```
 
 ---
 
-## 三、标准工作流（自迭代循环）
+## 三、管道自动化工作流
 
-### 第 1 步：扫描文档
+GEHD v0.5.1 的管道是全自动的，不需要手动步骤。
 
-```bash
-python -m hallucination_checker report.docx --verify
-```
+### 基本流程
 
-### 第 2 步：读取结果
+1. 选择验证模式（GUI 下拉框或 CLI --mode）
+2. 引擎自动执行管道全链路
+3. 结果在 GUI 全量展示或 CLI 终端输出
+4. 如需追溯决策 → GUI 审计面板或 CLI --audit
 
-```
-[幻觉-L3高危] P17 [半导体企业名=60] "辰星微电子" ctx:"...辰星微电子宣布完成..."
-[数据-L2.5高危] [可疑统计金额=48] P15 "80亿人民币"
-[实体待核实] P31 [电商平台名=60] "灵犀购"
-```
-
-### 第 3 步：联网验证每个候选词
-
-对 L4 队列中的每个候选词：
+### 管道内部流程（供理解，非操作步骤）
 
 ```
-候选词: "辰星微电子"
-搜索: site:crunchbase.com OR site:tianyancha.com "辰星微电子"
-结果: 无任何结果 → 判定为 虚构/幻觉
+full 模式：
+  规则引擎 → LLM 前置过滤 → 联网搜索(Tavily) → LLM 后置纠正 → 输出
+
+fast 模式：
+  规则引擎 → LLM 前置过滤 → LLM 直接核验(无搜索) → 输出
+
+offline 模式：
+  规则引擎 → 输出
 ```
 
-```
-候选词: "灵犀购"
-搜索: "灵犀购" 电商
-结果: 无任何结果 → 判定为 虚构/幻觉
-```
+### 读取结果
 
-```
-候选词: "80亿人民币"
-搜索: [公司名] 融资 80亿
-结果: 无相关报道 → 判定为 无法验证（need_manual_check）
-```
+CLI 输出包含 issues（高危 ≥65 分）、warnings（中危 45-64 分）、stats（统计摘要）。
 
-### 第 4 步：写入验证缓存
-
-```bash
-# 读取已有缓存（如果有）
-cat 文档路径_l4_cache.json
-
-# 更新缓存（添加验证结果）
-```
-
-缓存格式（`_l4_cache.json`）：
-
-```json
-{
-  "verified_entities": [
-    {
-      "word": "辰星微电子",
-      "verdict": "verified_fake",
-      "evidence": "天眼查/Crunchbase均无此公司记录",
-      "verified_at": "2026-05-08T23:00:00"
-    },
-    {
-      "word": "华为",
-      "verdict": "verified_real",
-      "evidence": "https://www.huawei.com - 知名企业",
-      "verified_at": "2026-05-08T23:00:00"
-    }
-  ]
-}
-```
-
-verdict 枚举：
-- `verified_real` — 已确认真实存在
-- `verified_fake` — 已确认为幻觉（虚构）
-- `need_manual_check` — AI 无法自动判定，需人工
-- `unable_to_verify` — 信息不足，无法验证
-
-### 第 5 步：更新配置（自迭代核心）
-
-根据验证结果编辑 `config/` 下的 JSON 文件：
-
-**加白名单**（词真实存在，以后直接放行）：
-
-编辑 `config/whitelist.json`，在 `whitelist` 数组中添加：
-
-```json
-{
-  "whitelist": [
-    ...现有词...,
-    "新确认的公司名",
-    "新确认的产品名"
-  ]
-}
-```
-
-**加黑名单**（词确认为幻觉，以后直接拦截）：
-
-编辑 `config/blacklist.json`，在 `blacklist` 数组中添加：
-
-```json
-{
-  "blacklist": [
-    ...现有词...,
-    "新发现的幻觉词"
-  ]
-}
-```
-
-**加排除词**（正常词被误报，以后跳过）：
-
-编辑 `config/exclude_words.json`，在 `exclude_words` 数组中添加。
-
-### 第 6 步：重新扫描（验证自迭代效果）
-
-```bash
-python -m hallucination_checker report.docx --verify
-```
-
-更新后的配置自动生效，之前确认的问题不再重复报告。
+GUI 输出包含全文高亮、管道状态、审计视图（点击任意实体展开完整决策链）。
 
 ---
 
-## 四、JSON 配置修改注意事项
+## 四、审计模式
+
+### CLI 审计
+
+```bash
+python -m hallucination_checker document.docx --audit
+```
+
+输出完整 decision_log JSON，每条记录包含：时间戳、阶段名、输入候选数、输出候选数、决策类型、跳过原因。
+
+### GUI 审计视图
+
+设置窗口 → 管道状态栏 → 点击任意阶段 → 展开 decision_log 详情。
+
+颜色编码：绿=通过，灰=跳过，红=异常。
+
+---
+
+## 五、管道模式选择指南
+
+| 场景 | 推荐模式 | 原因 |
+|------|:--:|------|
+| 关键文档（合同/财报/研报） | full | 需联网核查确认实体真实性 |
+| 批量初步扫描 | fast | LLM 直接核验，零搜索成本，速度快 10 倍 |
+| 无网络环境 / 零成本 | offline | 纯规则引擎，准确率较低但零开销 |
+| 需要完整审计追溯 | full 或 fast | decision_log 在任意非 offline 模式下均填充 |
+
+---
+
+## 六、JSON 配置修改注意事项
 
 ### 格式要求
 
@@ -200,7 +127,7 @@ python -c "import json; json.load(open('config/whitelist.json'))" && echo "OK"
 
 ---
 
-## 五、常见操作速查
+## 七、常见操作速查
 
 | 你要做什么 | 操作 |
 |------|------|
@@ -214,11 +141,12 @@ python -c "import json; json.load(open('config/whitelist.json'))" && echo "OK"
 
 ---
 
-## 六、故障排查
+## 八、故障排查
 
 | 症状 | 可能原因 | 解决 |
 |------|------|------|
 | 改了 JSON 不生效 | JSON 格式错误（逗号/引号） | 用 Python `json.load()` 校验 |
 | 加了白名单词还报 | 子串匹配问题（2字词需前缀匹配） | 确认词长度和位置 |
-| L4 队列为空 | 文档中无候选词或 `--verify` 未加 | 检查命令行参数 |
+| L4 队列为空 | 文档中无候选词或已改用 `--mode` | 检查 `--mode` 参数 |
 | `ModuleNotFoundError` | 未安装依赖 | `pip install -e .` |
+| `--verify` 不识别 | v0.5.0 后参数改为 `--mode` | 使用 `--mode full` 替代 |
