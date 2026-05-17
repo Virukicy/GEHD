@@ -75,6 +75,8 @@ workspace/                ← 各组过程文件分区（gitignored）
 - 组内可自由创建子目录，以组内 README.md 为约定
 - 过程文件在此分区内存活，不受版本发布影响
 
+> `workspace/` 和 `.workbuddy/` 在 `.gitignore` 中，不推送 GitHub。但各组对 `src/`、`docs/`、`gui/`、`tests/`、`config/` 的修改必须 `git push`——「不推 GitHub」仅指过程文件分区，不是各组禁令。
+
 ---
 
 ## 三、条条铁律
@@ -98,6 +100,27 @@ git commit -m "Team: 做了什么"
 git pull --rebase
 git push
 ```
+
+### D 开工
+
+D 组修改文档后同样遵循标准 Git 流程，确保其他组能拿到最新文档：
+
+```bash
+git pull
+# 修改 docs/ 或 README.md
+git add -A
+git commit -m "D: 做了什么"
+git pull --rebase
+git push
+```
+
+**commit message 格式**：`D: {PM2D 传递号} {一句话描述}`
+例如：`D: PM2D-009 COLLABORATION.md 传递规范升级`
+
+**D 组文档变更规则**：
+- 仅修改 `docs/` 和 `README.md`，不动 `src/`
+- 每次 PM 指令执行完毕后立即 `git push`
+- 如遇冲突（他人同时改了同一文档），按 §五 冲突处理规则执行
 
 ### 提交后 QA 哨卡
 
@@ -332,7 +355,7 @@ GEHD 执行智能体（E/U/QA/D）使用 Flash 模型，每次会话独立。**P
 | E | `engine/` `io/` `cli/` `config/` `tests/`（除 `test_gui.py`）`CHANGELOG.md` `pyproject.toml` | E2PM 回执 | 不改 `gui/`、不改架构；`io/document_text.py` 冻结共享 |
 | U | `gui/` `tests/test_gui.py` | U2PM 回执 | 不改 `engine/`；`io/document_text.py` 冻结共享 |
 | QA | 只读全部源文件，仅写 `.workbuddy/` | Q2E/Q2U/Q2PM | 不改任何源文件 |
-| D | `docs/` `README.md` `.workbuddy/` | D2PM 回执 | 不改 `src/`；CI 不推 GitHub |
+| D | `docs/` `README.md` `.workbuddy/` | D2PM 回执 | 不改 `src/` |
 
 > ⚠️ 2026-05-17 事故：缺少身份卡时，Flash 智能体以"通用助手"模式响应——不知道角色、边界、协议。
 
