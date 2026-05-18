@@ -47,7 +47,9 @@ tests/
 └── conftest.py          ← 🔵 E（改之前喊话）
 
 docs/                    ← 📗 D 独占
-docs/plan.md              ← 🔷 S 独占维护（D 创建后移交，不得自行修改）
+docs/plan.md              ← 🔷 S 独占维护（当前路线图，聚焦未来）
+docs/designs/architecture/v0.4-roadmap.md   ← 🔷 S 维护（v0.4.0 历史归档）
+docs/designs/architecture/pipeline-v0.5.0.md ← 🔷 S 维护（管道设计决策归档）
 docs/designs/
 ├── interfaces/            ← 接口冻结产物
 ├── architecture/          ← 架构设计决策记录
