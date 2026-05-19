@@ -52,17 +52,22 @@ E  ·  U  ·  QA  ·  D  ·  S   ← 各司其职的执行体
 ## 快速开始
 
 ```bash
-# 配置 API 密钥（联网核查 + LLM 功能必需）
+# 1. 克隆
+git clone https://github.com/Virukicy/GEHD.git
+cd GEHD
+
+# 2. 配置 API 密钥（联网核查 + LLM 功能必需）
 cp config/secrets.json.template config/secrets.json
+# 然后编辑 config/secrets.json，填入你的 DeepSeek 和 Tavily API Key
 
-# 安装
-pip install -e .
+# 3. 安装（推荐全量安装，含 GUI + 联网 + 多格式）
+pip install -e ".[all]"
 
-# 运行
-python -m hallucination_checker document.docx
-
-# 全管道深度核查
+# 4. 运行
+#   → CLI 模式（适合 AI 智能体批量接入）
 python -m hallucination_checker document.docx --mode full
+#   → GUI 模式（适合人类直观操作）
+python -m hallucination_checker.gui
 ```
 
 <details>

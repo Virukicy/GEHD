@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gehd"
-version = "0.4.0-rc"
+version = "0.5.2"
 description = "GEHD — 基于多源交叉校验的轻量级文档幻觉核查工具"
 readme = "README.md"
-license = {text = "待定"}
+license = {text = "MIT"}
 authors = [
     {name = "Virukicy", email = "virukisulancelot@gmail.com"},
 ]
@@ -39,6 +39,16 @@ web = ["httpx>=0.27", "tavily-python"]
 formats = ["pymupdf", "python-pptx"]
 # LLM API 调用（Iteration 3 使用）
 llm = ["openai>=1.30"]
+
+# 全量安装（推荐新用户使用）
+all = [
+    "PySide6>=6.6",
+    "httpx>=0.27",
+    "tavily-python",
+    "pymupdf",
+    "python-pptx",
+    "openai>=1.30",
+]
 
 # ---- 开发依赖（只有你改代码时才需要） ----
 dev = [
