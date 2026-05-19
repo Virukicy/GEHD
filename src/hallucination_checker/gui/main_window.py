@@ -1102,8 +1102,11 @@ class MainWindow(QMainWindow):
                     css_class, title_attr, bg_token = {
                         'issue': ('hl-issue', '高危', 'severity.issue.bg'),
                         'warning': ('hl-warning', '中危', 'severity.warning.bg'),
+                        'low': ('hl-low', '低危', 'severity.low.bg'),
                         'verified_real': ('hl-real', '已验证真', 'severity.verified.bg'),
-                        'l4_pending': ('hl-l4', '待验证', 'severity.declaration.bg'),
+                        'verified_fake': ('hl-fake', '已验证假', 'severity.issue.bg'),
+                        'l4_pending': ('hl-l4', '待验证', 'severity.uncertain.bg'),
+                        'declaration': ('hl-decl', '声明', 'severity.declaration.bg'),
                     }.get(severity, ('hl-info', '', 'severity.uncertain.bg'))
                     bg_color = self.theme.color(bg_token).name()
                     extra = 'text-decoration:line-through;' if severity == 'verified_real' else ''
