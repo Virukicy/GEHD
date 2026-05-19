@@ -1,6 +1,7 @@
-# GEHD — 文档幻觉核查工具
+# GEHD — Generalized Entity Hallucination Detection
 
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Platform](https://img.shields.io/badge/platform-macOS-lightgrey)](https://github.com/Virukicy/GEHD)
 [![Version](https://img.shields.io/badge/version-0.5.2-informational)](https://github.com/Virukicy/GEHD)
 [![Tests](https://img.shields.io/badge/tests-127%2F127-brightgreen)](tests/)
 [![Built with](https://img.shields.io/badge/Built%20with-WorkBuddy%20Six‑Agent%20Protocol-8A2BE2)](docs/COLLABORATION.md)
@@ -54,6 +55,8 @@ E  ·  U  ·  QA  ·  D  ·  S   ← 各司其职的执行体
 ---
 
 ## 快速开始
+
+> **当前仅支持 macOS。** 项目在 macOS 上开发和测试，Python 3.11+ 可运行。Windows/Linux 移植未完成（GUI 主题和路径处理需跨平台适配）。
 
 ```bash
 # 1. 克隆
