@@ -14,7 +14,6 @@ import html as _html
 import json
 import os
 import re
-import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -62,22 +61,13 @@ _CONFIG_DIR = get_config_dir()
 _USER_DATA_DIR: Path | None = None
 
 def _get_user_secrets() -> dict[str, str]:
-    """读取用户 secrets.json，返回 {'tavily_api_key': '', 'llm_api_key': ''}。
-    如新位置不存在但项目目录下有旧的 config/secrets.json，自动迁移。"""
+    """读取用户 secrets.json，返回 {'tavily_api_key': '', 'llm_api_key': ''}。"""
     global _USER_DATA_DIR
     try:
         if _USER_DATA_DIR is None:
             from hallucination_checker.engine.config import get_user_data_dir
             _USER_DATA_DIR = get_user_data_dir()
-        target = _USER_DATA_DIR / 'secrets.json'
-        if not target.exists():
-            # 首次启动：检查旧位置的 config/secrets.json 并迁移
-            legacy = Path(__file__).resolve().parent.parent.parent.parent / 'config' / 'secrets.json'
-            if legacy.exists():
-                target.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(legacy, target)
-                _gui_logger.info('已迁移 config/secrets.json → %s', target)
-        with open(target, encoding='utf-8') as f:
+        with open(_USER_DATA_DIR / 'secrets.json', encoding='utf-8') as f:
             data: dict[str, Any] = json.load(f)
         return {str(k): str(v) for k, v in data.items()}
     except (FileNotFoundError, json.JSONDecodeError, OSError):
