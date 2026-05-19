@@ -9,9 +9,14 @@
       "base_score": 60
     },
     {
-      "pattern": "(?:^|[^\\u4e00-\\u9fff])([\\u4e00-\\u9fff]{2,6}(?:公司|集团|企业|科技|股份|有限|控股|投资|基金|银行|保险|证券|信托))",
+      "pattern": "(?:^|[^\\u4e00-\\u9fff])([\\u4e00-\\u9fff]{2,6}(?:公司|集团|企业|科技|股份|有限|控股|投资|基金|银行|保险|证券|信托|事务所|工作室|中心|社|院|厂|局))",
       "category": "公司机构名",
       "base_score": 50
+    },
+    {
+      "pattern": "(?:^|[^\\u4e00-\\u9fff])([\\u4e00-\\u9fff]{2,6}(?:店|馆))",
+      "category": "公司机构名（小后缀）",
+      "base_score": 40
     },
     {
       "pattern": "(?:^|[^\\u4e00-\\u9fff])([\\u4e00-\\u9fff]{2,5}(?:大学|学院|学校|研究院|研究所|实验室|医院|中心|协会|学会|组织))",
@@ -67,6 +72,31 @@
       "pattern": "\\b([A-Z][a-z]{2,}(?:[ -][A-Z][a-z]{2,}){1,2})(?: Inc| Corp| LLC| Ltd| Co| Group)?\\b",
       "category": "英文机构/品牌名",
       "base_score": 40
+    },
+    {
+      "pattern": "\\b(\\d{17}[\\dXx])\\b",
+      "category": "身份证号",
+      "base_score": 65
+    },
+    {
+      "pattern": "\\b(1[3-9]\\d{9})\\b",
+      "category": "手机号",
+      "base_score": 55
+    },
+    {
+      "pattern": "\\b([\\w.+-]+@[\\w.-]+\\.[A-Za-z]{2,})\\b",
+      "category": "邮箱地址",
+      "base_score": 45
+    },
+    {
+      "pattern": "(https?://[^\\s,。，]+)",
+      "category": "URL",
+      "base_score": 40
+    },
+    {
+      "pattern": "\\b(\\d{16,19})\\b",
+      "category": "银行卡号",
+      "base_score": 60
     }
   ]
 }
