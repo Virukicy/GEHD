@@ -835,13 +835,16 @@ class MainWindow(QMainWindow):
     # ---- 统计条 ----
 
     def _refresh_stats(self, stats: dict[str, int]) -> None:
+        n_issues = len(self._current_issues)
+        n_warnings = len(self._current_warnings)
+        n_l4 = len(self._current_l4_queue)
         mapping: dict[str, str] = {
             'total_candidates':   f'候选实体: {stats.get("total_candidates", 0)}',
             'l25_candidates':     f'L2.5候选: {stats.get("l25_candidates", 0)}',
-            'high_risk':          f'高危: {stats.get("high_risk", 0)}',
-            'medium_risk':        f'中危: {stats.get("medium_risk", 0)}',
+            'high_risk':          f'高危: {n_issues}',
+            'medium_risk':        f'中危: {n_warnings}',
             'low_risk':           f'低危: {stats.get("low_risk", 0)}',
-            'l4_queue_size':      f'L4队列: {stats.get("l4_queue_size", 0)}',
+            'l4_queue_size':      f'L4队列: {n_l4}',
         }
         if stats.get('cross_validate_mode'):
             mapping['total_candidates'] = f'合并问题: {stats.get("merged_issues", 0)}'
