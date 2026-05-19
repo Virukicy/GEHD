@@ -24,7 +24,7 @@ if SRC_PATH not in sys.path:
 # 路径常量
 # ============================================================
 # PROJECT_ROOT = .../Claw, 需要上两层到用户home目录才能找到 Desktop
-USER_HOME = os.path.dirname(os.path.dirname(PROJECT_ROOT))  # /Users/jingjili
+USER_HOME = os.path.dirname(os.path.dirname(PROJECT_ROOT))  # 本地测试环境路径
 TEST_DATA_DIR = os.path.join(USER_HOME, 'Desktop', 'WorkBuddy', 'GEHD_Test_Suite', 'v2')
 RED_TEAM_DOCX = os.path.join(TEST_DATA_DIR, 'GEHD_RedTeam_v2_Document.docx')
 
