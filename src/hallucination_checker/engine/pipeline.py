@@ -323,6 +323,12 @@ def _dispatch_stage(
 
     elif stage_name == 'llm_pre':
         if llm is None:
+            context.setdefault('decision_log', []).append({
+                'stage': 'llm_pre', 'status': 'skipped',
+                'reason': 'LLM adapter not available (no API key or not configured)',
+                'timestamp': datetime.datetime.now().isoformat(),
+            })
+            context.setdefault('status', {})['llm_pre'] = 'skipped'
             return context
         from .llm.pre_filter import llm_pre_filter
         context = llm_pre_filter(context, llm, config)
@@ -332,12 +338,24 @@ def _dispatch_stage(
 
     elif stage_name == 'llm_post':
         if llm is None:
+            context.setdefault('decision_log', []).append({
+                'stage': 'llm_post', 'status': 'skipped',
+                'reason': 'LLM adapter not available (no API key or not configured)',
+                'timestamp': datetime.datetime.now().isoformat(),
+            })
+            context.setdefault('status', {})['llm_post'] = 'skipped'
             return context
         from .llm.post_filter import llm_post_filter
         context = llm_post_filter(context, llm, config)
 
     elif stage_name == 'llm_direct_verify':
         if llm is None:
+            context.setdefault('decision_log', []).append({
+                'stage': 'llm_direct_verify', 'status': 'skipped',
+                'reason': 'LLM adapter not available (no API key or not configured)',
+                'timestamp': datetime.datetime.now().isoformat(),
+            })
+            context.setdefault('status', {})['llm_direct_verify'] = 'skipped'
             return context
         from .llm.direct_verify import llm_direct_verify
         context = llm_direct_verify(context, llm, config)
