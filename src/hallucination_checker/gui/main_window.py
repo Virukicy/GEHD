@@ -1099,12 +1099,14 @@ class MainWindow(QMainWindow):
                 # 已替换区间列表，防止嵌套替换
                 replaced_ranges: list[tuple[int, int]] = []
                 for word, severity in sorted(unique, key=lambda x: -len(x[0])):
-                    css_class, title_attr = {
-                        'issue': ('hl-issue', '高危'),
-                        'warning': ('hl-warning', '中危'),
-                        'verified_real': ('hl-real', '已验证真'),
-                        'l4_pending': ('hl-l4', '待验证'),
-                    }.get(severity, ('hl-info', ''))
+                    css_class, title_attr, bg_token = {
+                        'issue': ('hl-issue', '高危', 'severity.issue.bg'),
+                        'warning': ('hl-warning', '中危', 'severity.warning.bg'),
+                        'verified_real': ('hl-real', '已验证真', 'severity.verified.bg'),
+                        'l4_pending': ('hl-l4', '待验证', 'severity.declaration.bg'),
+                    }.get(severity, ('hl-info', '', 'severity.uncertain.bg'))
+                    bg_color = self.theme.color(bg_token).name()
+                    extra = 'text-decoration:line-through;' if severity == 'verified_real' else ''
                     escaped = word.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
                     # 查找不在已替换区间内的首次出现位置
                     search_start = 0
@@ -1113,7 +1115,7 @@ class MainWindow(QMainWindow):
                         if idx == -1:
                             break
                         if not any(start <= idx < end for start, end in replaced_ranges):
-                            span = f'<span class="{css_class}" title="{title_attr}">{escaped}</span>'
+                            span = f'<span style="background-color:{bg_color};padding:1px 3px;border-radius:2px;cursor:pointer;{extra}" title="{title_attr}">{escaped}</span>'
                             part_text = part_text[:idx] + span + part_text[idx + len(escaped):]
                             replaced_ranges.append((idx, idx + len(span)))
                             break
@@ -1124,25 +1126,11 @@ class MainWindow(QMainWindow):
 
         body = '\n'.join(parts_html) if parts_html else f'<p style="color:{secondary};">无内容</p>'
 
-        # 用主题令牌颜色生成 CSS
-        css_parts: list[str] = []
-        for cls_name, token_key in [
-            ('hl-issue', 'severity.issue.bg'),
-            ('hl-warning', 'severity.warning.bg'),
-            ('hl-real', 'severity.verified.bg'),
-            ('hl-l4', 'severity.declaration.bg'),
-            ('hl-info', 'severity.uncertain.bg'),
-        ]:
-            css_parts.append(f'.{cls_name} {{ background-color: {self.theme.color(token_key).name()}; '
-                             'padding: 1px 3px; border-radius: 2px; cursor: pointer; }}')
-
         html = f'''<!DOCTYPE html>
 <html><head><meta charset="utf-8">
 <style>
   body {{ font-family: -apple-system, sans-serif; font-size: 14px; line-height: 1.8; margin: 24px; color: {self.theme.color("text.primary").name()}; background: {self.theme.color("surface.background").name()}; }}
   .loc-label {{ color: {secondary}; font-size: 12px; margin-right: 8px; }}
-  .hl-real {{ text-decoration: line-through; }}
-{chr(10).join(css_parts)}
   .stats-bar {{ margin-bottom: 16px; padding: 8px 12px; background: {card}; border-radius: 4px; font-size: 13px; }}
 </style></head><body>
 <div class="stats-bar">
