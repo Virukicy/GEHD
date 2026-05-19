@@ -638,6 +638,8 @@ class MainWindow(QMainWindow):
         for token_key, label in [
             ('severity.issue', '问题'),
             ('severity.warning', '警告'),
+            ('severity.verified', '已验证真'),
+            ('severity.uncertain', '待验证'),
         ]:
             swatch = QLabel('  ')
             swatch.setFixedSize(18, 18)
