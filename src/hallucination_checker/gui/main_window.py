@@ -1086,7 +1086,19 @@ class MainWindow(QMainWindow):
 
             loc_highlights = highlights.get(loc, [])
             if loc_highlights:
-                for word, severity in sorted(loc_highlights, key=lambda x: -len(x[0])):
+                # 去重：同一位置同一 (word, severity) 只高亮一次
+                seen: set[tuple[str, str]] = set()
+                unique: list[tuple[str, str]] = []
+                for w, s in loc_highlights:
+                    key = (w, s)
+                    if key not in seen:
+                        seen.add(key)
+                        unique.append((w, s))
+
+                # 按字长降序（长词优先），避免子串冲突
+                # 已替换区间列表，防止嵌套替换
+                replaced_ranges: list[tuple[int, int]] = []
+                for word, severity in sorted(unique, key=lambda x: -len(x[0])):
                     css_class, title_attr = {
                         'issue': ('hl-issue', '高危'),
                         'warning': ('hl-warning', '中危'),
@@ -1094,12 +1106,18 @@ class MainWindow(QMainWindow):
                         'l4_pending': ('hl-l4', '待验证'),
                     }.get(severity, ('hl-info', ''))
                     escaped = word.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-                    if escaped in part_text:
-                        part_text = part_text.replace(
-                            escaped,
-                            f'<span class="{css_class}" title="{title_attr}">{escaped}</span>',
-                            1
-                        )
+                    # 查找不在已替换区间内的首次出现位置
+                    search_start = 0
+                    while True:
+                        idx = part_text.find(escaped, search_start)
+                        if idx == -1:
+                            break
+                        if not any(start <= idx < end for start, end in replaced_ranges):
+                            span = f'<span class="{css_class}" title="{title_attr}">{escaped}</span>'
+                            part_text = part_text[:idx] + span + part_text[idx + len(escaped):]
+                            replaced_ranges.append((idx, idx + len(span)))
+                            break
+                        search_start = idx + 1
 
             loc_tag = f' <small style="color:{secondary};">[{display_label}]</small>'
             parts_html.append(f'<p><span class="loc-label">{loc_tag}</span>{part_text}</p>')
