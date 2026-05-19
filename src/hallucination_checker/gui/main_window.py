@@ -636,12 +636,8 @@ class MainWindow(QMainWindow):
         legend_layout.setSpacing(16)
         self._legend_items: list[tuple[QLabel, QLabel]] = []
         for token_key, label in [
-            ('severity.issue', '高危'),
-            ('severity.warning', '中危'),
-            ('severity.low', '低危'),
-            ('severity.verified', '已验证'),
-            ('severity.uncertain', '无法验证'),
-            ('severity.declaration', '声明'),
+            ('severity.issue', '问题'),
+            ('severity.warning', '警告'),
         ]:
             swatch = QLabel('  ')
             swatch.setFixedSize(18, 18)
@@ -1102,15 +1098,14 @@ class MainWindow(QMainWindow):
                 # 已替换区间列表，防止嵌套替换
                 replaced_ranges: list[tuple[int, int]] = []
                 for word, severity in sorted(unique, key=lambda x: -len(x[0])):
-                    css_class, title_attr, bg_token = {
-                        'issue': ('hl-issue', '高危', 'severity.issue.bg'),
-                        'warning': ('hl-warning', '中危', 'severity.warning.bg'),
-                        'low': ('hl-low', '低危', 'severity.low.bg'),
-                        'verified_real': ('hl-real', '已验证真', 'severity.verified.bg'),
-                        'verified_fake': ('hl-fake', '已验证假', 'severity.issue.bg'),
-                        'l4_pending': ('hl-l4', '待验证', 'severity.uncertain.bg'),
-                        'declaration': ('hl-decl', '声明', 'severity.declaration.bg'),
-                    }.get(severity, ('hl-info', '', 'severity.uncertain.bg'))
+                    sz_label, bg_token = {
+                        'issue': ('高危', 'severity.issue.bg'),
+                        'warning': ('中危', 'severity.warning.bg'),
+                        'verified_real': ('已验证真', 'severity.verified.bg'),
+                        'l4_pending': ('待验证', 'severity.uncertain.bg'),
+                    }.get(severity, ('', 'severity.uncertain.bg'))
+                    bg_color = self.theme.color(bg_token).name()
+                    extra = 'text-decoration:line-through;' if severity == 'verified_real' else ''
                     bg_color = self.theme.color(bg_token).name()
                     extra = 'text-decoration:line-through;' if severity == 'verified_real' else ''
                     escaped = word.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
@@ -1121,7 +1116,7 @@ class MainWindow(QMainWindow):
                         if idx == -1:
                             break
                         if not any(start <= idx < end for start, end in replaced_ranges):
-                            span = f'<span style="background-color:{bg_color};padding:1px 3px;border-radius:2px;cursor:pointer;{extra}" title="{title_attr}">{escaped}</span>'
+                            span = f'<span style="background-color:{bg_color};padding:1px 3px;border-radius:2px;cursor:pointer;{extra}" title="{sz_label}">{escaped}</span>'
                             part_text = part_text[:idx] + span + part_text[idx + len(escaped):]
                             replaced_ranges.append((idx, idx + len(span)))
                             break
